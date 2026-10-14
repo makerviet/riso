@@ -32,6 +32,12 @@ impl Visitor<'_> for LenientVisitor {
     fn visit_f64<E: de::Error>(self, v: f64) -> Result<InputValue, E> {
         Ok(InputValue::Text(v.to_string()))
     }
+    fn visit_unit<E: de::Error>(self) -> Result<InputValue, E> {
+        Ok(InputValue::Text("null".into()))
+    }
+    fn visit_none<E: de::Error>(self) -> Result<InputValue, E> {
+        Ok(InputValue::Text("null".into()))
+    }
     fn visit_str<E: de::Error>(self, v: &str) -> Result<InputValue, E> {
         Ok(InputValue::Text(v.to_string()))
     }

@@ -106,6 +106,15 @@ fn structural_checks(rules: &RulesFile) -> Vec<RuleError> {
     if rules.sides.ids.len() != 2 {
         errors.push(RuleError::new("RULE_SCHEMA", "sides.ids", "v1 cần đúng 2 liên minh"));
     }
+    let mut seen_ids = BTreeSet::new();
+    for id in &rules.sides.ids {
+        if !seen_ids.insert(id) {
+            errors.push(RuleError::new("RULE_SCHEMA", "sides.ids", format!("id liên minh '{id}' bị trùng")));
+        }
+        if RESERVED.contains(&id.as_str()) {
+            errors.push(RuleError::new("RULE_SCHEMA", "sides.ids", format!("id liên minh '{id}' trùng tên dành riêng")));
+        }
+    }
     if rules.sides.teams == 0 {
         errors.push(RuleError::new("RULE_SCHEMA", "sides.teams", "mỗi liên minh cần ít nhất 1 đội"));
     }
@@ -270,5 +279,14 @@ mod tests {
     fn unknown_top_level_field_is_rejected() {
         let bad = format!("{BASE}bogus: 1\n");
         assert_eq!(parse_rules(&bad, &NoParents).unwrap_err()[0].code, "RULE_YAML");
+    }
+
+    #[test]
+    fn duplicate_or_reserved_side_ids_rejected() {
+        for ids in ["[red, red]", "[field, blue]"] {
+            let yaml = BASE.replace("ids: [red, blue]", &format!("ids: {ids}"));
+            let errors = parse_rules(&yaml, &NoParents).unwrap_err();
+            assert!(errors.iter().any(|e| e.code == "RULE_SCHEMA" && e.path == "sides.ids"), "{ids}: {errors:?}");
+        }
     }
 }

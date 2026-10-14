@@ -84,14 +84,14 @@ fn input_line(name: &str, def: &InputDef, value: &Dynamic) -> LineItem {
     LineItem { name: name.to_string(), label: Some(def.label.clone()), label_en: def.label_en.clone(), value: format_dynamic(value) }
 }
 
-fn round(raw: Decimal, rounding: Rounding) -> i64 {
+fn round(raw: Decimal, rounding: Rounding) -> Option<i64> {
     let r = match rounding {
         Rounding::Ceil => raw.ceil(),
         Rounding::Floor => raw.floor(),
         Rounding::Round => raw.round_dp_with_strategy(0, RoundingStrategy::MidpointAwayFromZero),
         Rounding::None => raw.trunc(),
     };
-    r.to_i64().unwrap_or(i64::MAX)
+    r.to_i64()
 }
 
 struct SideState {
@@ -229,18 +229,23 @@ pub fn score(rules: &Rules, obs: &Observation) -> Result<ScoreSheet, Vec<ScoreEr
     let mut foul_lines: BTreeMap<String, Vec<FoulLine>> = BTreeMap::new();
     for (id, state) in &sides {
         let side_obs = obs.sides.get(id).unwrap_or(&empty);
-        let opponent = file.sides.ids.iter().find(|other| *other != id).expect("2 liên minh").clone();
+        let Some(opponent) = file.sides.ids.iter().find(|other| *other != id).cloned() else {
+            return Err(vec![ScoreError::new("EVAL", format!("sides.{id}"), "không tìm thấy liên minh đối thủ")]);
+        };
         let mut scope = make_side_scope(id, state);
         for foul in &plan.fouls {
             let def = &file.fouls[&foul.id];
             let count = side_obs.fouls.get(&foul.id).copied().unwrap_or(0);
             let each = to_dec(&eval_node(rules, &mut scope, &foul.node, &format!("fouls.{} ({id})", foul.id)).map_err(|e| vec![e])?)
                 .map_err(|e| vec![ScoreError::new("EVAL", format!("fouls.{}", foul.id), e.to_string())])?;
-            let total = each * Decimal::from(count);
-            match def.goes_to {
-                GoesTo::Opponent => *received.get_mut(&opponent).unwrap() += total,
-                GoesTo::SelfSide => *committed.get_mut(id).unwrap() += total,
-            }
+            let overflow = || vec![ScoreError::new("EVAL", format!("fouls.{} ({id})", foul.id), "tràn số khi tính điểm phạt")];
+            let total = each.checked_mul(Decimal::from(count)).ok_or_else(overflow)?;
+            let (target, key) = match def.goes_to {
+                GoesTo::Opponent => (&mut received, &opponent),
+                GoesTo::SelfSide => (&mut committed, id),
+            };
+            let slot = target.get_mut(key).ok_or_else(overflow)?;
+            *slot = slot.checked_add(total).ok_or_else(overflow)?;
             foul_lines.entry(id.clone()).or_default().push(FoulLine {
                 id: foul.id.clone(),
                 label: def.label.clone(),
@@ -260,7 +265,8 @@ pub fn score(rules: &Rules, obs: &Observation) -> Result<ScoreSheet, Vec<ScoreEr
         scope.push_constant("fouls_committed", committed[id]);
         let raw = to_dec(&eval_node(rules, &mut scope, &plan.score, &format!("score ({id})")).map_err(|e| vec![e])?)
             .map_err(|e| vec![ScoreError::new("EVAL", "score", e.to_string())])?;
-        let final_score = round(raw, file.rounding);
+        let final_score = round(raw, file.rounding)
+            .ok_or_else(|| vec![ScoreError::new("EVAL", format!("score ({id})"), "điểm vượt phạm vi số nguyên")])?;
         let side_obs = obs.sides.get(id).unwrap_or(&empty);
         let teams = side_obs
             .teams
@@ -485,5 +491,50 @@ mod tests {
         let sheet = score(&rules, &obs(1, 0, [false, false], [false, false])).unwrap();
         assert_eq!(sheet.sides["red"].raw_score, "0.3");
         assert_eq!(sheet.sides["red"].score, 1);
+    }
+
+    #[test]
+    fn overflowing_foul_is_error_not_panic() {
+        let yaml = BASE.replace("points: \"3\"", "points: \"50000000000000000000000\"");
+        let rules = load(&yaml, &NoParents).unwrap();
+        let mut o = obs(1, 1, [false, false], [false, false]);
+        o.sides.get_mut("red").unwrap().fouls.insert("minor".into(), 4_000_000);
+        let errors = score(&rules, &o).unwrap_err();
+        assert_eq!(errors[0].code, "EVAL");
+        assert!(errors[0].path.starts_with("fouls.minor"), "{}", errors[0].path);
+    }
+
+    #[test]
+    fn score_beyond_i64_is_error_not_saturated() {
+        let yaml = BASE.replace("\"balls * ball_points\"", "\"balls * 50000000000000000000\"");
+        let rules = load(&yaml, &NoParents).unwrap();
+        let errors = score(&rules, &obs(1, 0, [false, false], [false, false])).unwrap_err();
+        assert_eq!(errors[0].code, "EVAL");
+        assert!(errors[0].path.starts_with("score"), "{}", errors[0].path);
+    }
+
+    #[test]
+    fn yaml_null_cell_is_named_error() {
+        let rules = load(BASE, &NoParents).unwrap();
+        let yaml = "game: base-game\nsides:\n  red:\n    balls:\n    robots: [{parked: false}, {parked: false}]\n  blue:\n    balls: 1\n    robots: [{parked: false}, {parked: false}]\n";
+        let o: Observation = serde_yaml_ng::from_str(yaml).unwrap();
+        let errors = score(&rules, &o).unwrap_err();
+        assert_eq!((errors[0].code, errors[0].path.as_str()), ("OBS_RANGE", "sides.red.balls"));
+    }
+
+    #[test]
+    fn self_goes_to_fouls_are_committed() {
+        let yaml = BASE
+            .replace("goes_to: opponent", "goes_to: self")
+            .replace("+ fouls_received\"", "- fouls_committed\"");
+        let rules = load(&yaml, &NoParents).unwrap();
+        let mut o = obs(10, 3, [false, false], [false, false]);
+        o.sides.get_mut("red").unwrap().fouls.insert("minor".into(), 2);
+        let sheet = score(&rules, &o).unwrap();
+        assert_eq!(sheet.sides["red"].fouls_committed, "6");
+        assert_eq!(sheet.sides["red"].fouls_received, "0");
+        assert_eq!(sheet.sides["red"].score, 14);
+        assert_eq!(sheet.sides["blue"].score, 6);
+        assert_eq!(sheet.sides["red"].fouls[0].goes_to, "self");
     }
 }
