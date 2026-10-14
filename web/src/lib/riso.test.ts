@@ -40,4 +40,16 @@ describe('loadRules', () => {
 		expect(rules.game).toBe('fgc-2026-mini');
 		expect(rules.sides.teams).toBe(3);
 	});
+
+	it('ô số bị xoá (null) báo OBS_RANGE đúng đường dẫn', async () => {
+		const { handle } = await loadRules('fgc-2026', fakeFetch, wasm());
+		const obs = JSON.parse(handle.blankObservation());
+		for (const side of Object.values(obs.sides) as { teams?: unknown }[]) side.teams = [];
+		obs.sides.red.su_wildfire = null;
+		const r = JSON.parse(handle.score(JSON.stringify(obs)));
+		expect(r.ok).toBe(false);
+		expect(r.errors).toContainEqual(
+			expect.objectContaining({ path: 'sides.red.su_wildfire', code: 'OBS_RANGE' })
+		);
+	});
 });

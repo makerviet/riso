@@ -7,6 +7,7 @@
 	let { data } = $props();
 	type Obs = {
 		game: string;
+		rules_version?: string;
 		field: Record<string, number | string | boolean>;
 		sides: Record<string, Record<string, unknown> & {
 			robots: Record<string, number | string | boolean>[];
@@ -36,7 +37,12 @@
 			for (const side of Object.values(blank.sides)) {
 				side.teams = Array.from({ length: loaded.rules.sides.teams }, () => ({ id: '', card: null }));
 			}
-			obs = draft?.game === blank.game ? draft : blank;
+			if (draft?.game === blank.game && draft.rules_version === loaded.rules.version) {
+					const { rules_version: _v, ...rest } = draft;
+					obs = rest;
+				} else {
+					obs = blank;
+				}
 		} catch (e) {
 			loadError = e instanceof Error ? e.message : String(e);
 		}
@@ -75,7 +81,7 @@
 	$effect(() => {
 		if (!obs) return;
 		try {
-			localStorage.setItem(draftKey(data.gameId), JSON.stringify(obs));
+			localStorage.setItem(draftKey(data.gameId), JSON.stringify({ ...obs, rules_version: rules?.version }));
 		} catch {
 			/* trình duyệt chặn lưu trữ: bỏ qua, trang vẫn chạy */
 		}
