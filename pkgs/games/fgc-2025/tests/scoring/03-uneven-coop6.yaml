@@ -1,0 +1,14 @@
+name: "σ ≈ 28,3 → DF 0,5; 6 robot treo → 30"
+observation:
+  game: fgc-2025
+  field: { barriers_mitigated: 9, barriers_in_ecosystems: 0, bio_freshwater: 60, bio_marine: 0, bio_terrestrial: 0 }
+  sides:
+    red:
+      robots: [ { rope: LEVEL_2 }, { rope: LEVEL_2 }, { rope: LEVEL_2 } ]
+    blue:
+      robots: [ { rope: LEVEL_3 }, { rope: LEVEL_3 }, { rope: LEVEL_4 } ]
+expect:
+  field: { distribution: 0.5, coop: 30 }
+  sides:
+    red: { score: 99, values: { protection: 1.75 } }
+    blue: { score: 118, values: { protection: 2.25 } }

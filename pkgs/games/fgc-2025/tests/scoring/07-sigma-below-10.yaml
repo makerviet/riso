@@ -1,0 +1,14 @@
+name: "σ ≈ 9,978 → DF 0,6"
+observation:
+  game: fgc-2025
+  field: { barriers_mitigated: 0, barriers_in_ecosystems: 0, bio_freshwater: 0, bio_marine: 8, bio_terrestrial: 24 }
+  sides:
+    red:
+      robots: [ { rope: NONE }, { rope: NONE }, { rope: NONE } ]
+    blue:
+      robots: [ { rope: NONE }, { rope: NONE }, { rope: NONE } ]
+expect:
+  field: { distribution: 0.6, coop: 0 }
+  sides:
+    red: { score: 20, values: { protection: 1 } }
+    blue: { score: 20, values: { protection: 1 } }

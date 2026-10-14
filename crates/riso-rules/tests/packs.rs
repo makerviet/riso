@@ -44,3 +44,10 @@ fn fgc_2026_has_eight_cases() {
     let report = check_pack(&games_root().join("fgc-2026")).unwrap();
     assert_eq!(report.cases.len(), 8);
 }
+
+#[test]
+fn fgc_2025_has_nine_cases() {
+    let report = check_pack(&games_root().join("fgc-2025")).unwrap();
+    assert_eq!(report.cases.len(), 9);
+    assert!(report.ok());
+}
