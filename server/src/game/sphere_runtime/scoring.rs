@@ -55,4 +55,14 @@ impl SphereRuntime {
             })
             .collect()
     }
+
+    /// Đặt bóng thẳng vào vị trí cho test tính điểm, bỏ qua vật lý.
+    #[cfg(test)]
+    pub fn place_test_balls(&mut self, positions: &[Vec3], released_by: Option<&str>) {
+        for (ball, position) in self.balls.iter_mut().zip(positions) {
+            ball.position = *position;
+            ball.active = true;
+            ball.last_outtake_alliance = released_by.map(str::to_string);
+        }
+    }
 }

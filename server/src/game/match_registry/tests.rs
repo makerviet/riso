@@ -122,3 +122,140 @@ fn binary_state_has_versioned_header_and_compact_positions() {
         encoded.len()
     );
 }
+
+fn fgc_2026_pack() -> GamePackMetadata {
+    crate::game::pack_loader::PackLoader::new("0.1.0")
+        .load_pack("../pkgs/games/fgc-2026/manifest.json")
+        .unwrap()
+}
+
+#[test]
+fn rescore_turns_balls_in_target_into_score_sheet() {
+    let pack = fgc_2026_pack();
+    let mut runtime = RuntimeBackend::new("t".into(), &pack, 1);
+    let RuntimeBackend::Sphere(sphere) = &mut runtime else {
+        panic!("cần sphere backend")
+    };
+    let target = pack
+        .field_definition
+        .scoring_targets
+        .iter()
+        .find(|t| t.id == "red-suppression-unit")
+        .unwrap()
+        .clone();
+    let centre = [
+        (target.min[0] + target.max[0]) / 2.0,
+        (target.min[1] + target.max[1]) / 2.0,
+        (target.min[2] + target.max[2]) / 2.0,
+    ];
+    sphere.place_test_balls(&[centre, centre, centre], Some("red"));
+    let (obs, sheet) = rescore(&mut runtime, &pack, None).expect("tính được");
+    assert_eq!(
+        obs.sides["red"].inputs["su_wildfire"],
+        riso_rules::InputValue::Int(3)
+    );
+    assert_eq!(sheet.sides["red"].score, 3);
+    let score = runtime.score_state();
+    assert_eq!(score.red_score, 3);
+    assert_eq!(score.blue_score, 0);
+    assert_eq!(score.breakdown.get("red.su_points"), Some(&3));
+    assert!(score.sheet.is_some());
+    assert!(score.scoring_error.is_none());
+}
+
+#[test]
+fn locked_robot_labels_are_used_for_final_score() {
+    let pack = fgc_2026_pack();
+    let mut runtime = RuntimeBackend::new("t".into(), &pack, 1);
+    let locked = vec![("red".to_string(), "zone3".to_string())];
+    let (obs, _) = rescore(&mut runtime, &pack, Some(&locked)).unwrap();
+    assert_eq!(
+        obs.sides["red"].robots[0]["climb"],
+        riso_rules::InputValue::Text("ZONE_3".into())
+    );
+}
+
+#[test]
+fn completion_result_carries_observation_and_score_sheet() {
+    let pack = fgc_2026_pack();
+    let mut runtime = RuntimeBackend::new("t".into(), &pack, 1);
+    let scored = rescore(&mut runtime, &pack, None);
+    let result = completion_result(&runtime.score_state(), scored.as_ref(), &pack);
+    assert_eq!(result["rulesVersion"], "1.0.0");
+    assert_eq!(result["observation"]["game"], "fgc-2026");
+    assert_eq!(result["scoreSheet"]["sides"]["red"]["score"], 0);
+    assert_eq!(result["redScore"], 0);
+    // API chặn payload hoàn tất > 16 KB (api/src/lib/validation.ts durablePayload).
+    let size = serde_json::to_string(&result).unwrap().len();
+    assert!(size <= 16_000, "result {size} bytes");
+}
+
+#[test]
+fn score_state_from_sheet_reads_side_scores_and_labelled_values() {
+    let rules = riso_rules::load(
+        include_str!("../../../../pkgs/games/fgc-2026/rules.yaml"),
+        &riso_rules::NoParents,
+    )
+    .unwrap();
+    let mut obs = rules.blank_observation();
+    obs.sides
+        .get_mut("blue")
+        .unwrap()
+        .inputs
+        .insert("su_wildfire".into(), riso_rules::InputValue::Int(7));
+    let sheet = Arc::new(riso_rules::score(&rules, &obs).unwrap());
+    let state = ScoreState::from_sheet(sheet);
+    assert_eq!(state.blue_score, 7);
+    assert_eq!(state.red_score, 0);
+    assert_eq!(state.breakdown.get("blue.su_points"), Some(&7));
+    // Hệ số leo 1 có nhãn → ceil(1) = 1.
+    assert_eq!(state.breakdown.get("blue.climb_mult"), Some(&1));
+}
+
+fn runtime_with_three_red_balls(pack: &GamePackMetadata) -> RuntimeBackend {
+    let mut runtime = RuntimeBackend::new("t".into(), pack, 1);
+    let RuntimeBackend::Sphere(sphere) = &mut runtime else {
+        panic!("cần sphere backend")
+    };
+    let target = pack
+        .field_definition
+        .scoring_targets
+        .iter()
+        .find(|t| t.id == "red-suppression-unit")
+        .unwrap();
+    let centre = [
+        (target.min[0] + target.max[0]) / 2.0,
+        (target.min[1] + target.max[1]) / 2.0,
+        (target.min[2] + target.max[2]) / 2.0,
+    ];
+    sphere.place_test_balls(&[centre, centre, centre], Some("red"));
+    runtime
+}
+
+#[test]
+fn match_scoring_rescores_every_thirty_ticks() {
+    let pack = fgc_2026_pack();
+    let mut runtime = runtime_with_three_red_balls(&pack);
+    let mut scoring = MatchScoring::default();
+    scoring.periodic(&mut runtime, &pack, 29);
+    assert_eq!(runtime.score_state().red_score, 0);
+    scoring.periodic(&mut runtime, &pack, 30);
+    assert_eq!(runtime.score_state().red_score, 3);
+}
+
+#[test]
+fn final_score_uses_robot_states_locked_at_buzzer() {
+    let pack = fgc_2026_pack();
+    let mut runtime = RuntimeBackend::new("t".into(), &pack, 1);
+    let mut scoring = MatchScoring::default();
+    scoring.lock_at_buzzer(&runtime, &pack);
+    assert_eq!(scoring.locked_robots, Some(Vec::new()));
+    // Đã chốt thì lần gọi sau không ghi đè.
+    scoring.locked_robots = Some(vec![("red".to_string(), "zone3".to_string())]);
+    scoring.lock_at_buzzer(&runtime, &pack);
+    let (obs, _) = scoring.finalize(&mut runtime, &pack).expect("tính được");
+    assert_eq!(
+        obs.sides["red"].robots[0]["climb"],
+        riso_rules::InputValue::Text("ZONE_3".into())
+    );
+}

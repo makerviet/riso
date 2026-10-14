@@ -382,4 +382,19 @@ mod tests {
         let bad = OBSERVE.replace("zone3: ZONE_3", "zone3: ZONE_9");
         assert!(parse_observe(&bad, &rules).unwrap_err().contains("ZONE_9"));
     }
+
+    #[test]
+    #[ignore]
+    fn benchmark_score_fgc_2026() {
+        let rules = load(RULES, &NoParents).unwrap();
+        let obs = rules.blank_observation();
+        let started = std::time::Instant::now();
+        for _ in 0..1_000 {
+            score(&rules, &obs).unwrap();
+        }
+        // Tổng giây cho 1.000 lần = mili giây mỗi lần.
+        let per_call_ms = started.elapsed().as_secs_f64();
+        println!("score() fgc-2026: {per_call_ms:.4} ms/lần");
+        assert!(per_call_ms < 1.0, "score() phải < 1 ms");
+    }
 }

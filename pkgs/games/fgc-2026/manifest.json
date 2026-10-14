@@ -88,10 +88,12 @@
     { "id": "TELEOP", "durationSec": 150 }
   ],
   "scripts": {
-    "scoring": "rules/scoring.rhai",
-    "penalties": "rules/penalties.rhai",
     "robot_rules": "rules/robot.rhai",
     "arena": "rules/arena.rhai"
+  },
+  "rules": {
+    "scoring": "rules.yaml",
+    "observe": "observe.yaml"
   },
   "robots": {
     "starter-bot": {

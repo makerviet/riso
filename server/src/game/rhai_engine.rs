@@ -1,7 +1,6 @@
 use rhai::{AST, Engine, Map, Scope};
 use serde::Serialize;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use tracing::{error, info};
 
 #[derive(Debug, Clone, Serialize, serde::Deserialize)]
@@ -19,19 +18,9 @@ pub struct RuleScriptMetadata {
     pub engine_calls: Vec<String>,
 }
 
-#[derive(Debug, Clone)]
-pub struct RuleOutcome {
-    pub kind: &'static str,
-    pub team: String,
-    pub category: String,
-    pub points: i64,
-}
-
 pub struct RhaiEngine {
     engine: Engine,
-    scoring_ast: Option<AST>,
     scripts: HashMap<String, AST>,
-    outcomes: Arc<Mutex<Vec<RuleOutcome>>>,
 }
 
 impl Default for RhaiEngine {
@@ -42,42 +31,15 @@ impl Default for RhaiEngine {
 
 impl RhaiEngine {
     pub fn new() -> Self {
-        let mut engine = Engine::new();
-        let outcomes = Arc::new(Mutex::new(Vec::<RuleOutcome>::new()));
-        let scoring_outcomes = outcomes.clone();
-
-        engine.register_fn(
-            "add_score",
-            move |team: &str, category: &str, points: i64| {
-                info!(
-                    "Rhai added score! Team: {}, Category: {}, Points: {}",
-                    team, category, points
-                );
-                if let Ok(mut events) = scoring_outcomes.lock() {
-                    events.push(RuleOutcome {
-                        kind: "score",
-                        team: team.to_string(),
-                        category: category.to_string(),
-                        points,
-                    });
-                }
-            },
-        );
-
         Self {
-            engine,
-            scoring_ast: None,
+            engine: Engine::new(),
             scripts: HashMap::new(),
-            outcomes,
         }
     }
 
     pub fn load_source(&mut self, path: &str, source: &str) -> bool {
         match self.compile_script(source) {
             Ok(ast) => {
-                if path.ends_with("scoring.rhai") {
-                    self.scoring_ast = Some(ast.clone());
-                }
                 self.scripts.insert(path.to_string(), ast);
                 info!("Successfully loaded and compiled API rule source: {}", path);
                 true
@@ -91,34 +53,6 @@ impl RhaiEngine {
 
     pub fn loaded_script_count(&self) -> usize {
         self.scripts.len()
-    }
-
-    /// Execute the authored semantic hook, if the scoring script defines it.
-    /// The simulator intentionally passes a stable entity id here; richer
-    /// entity maps can be added without changing the pack hook signature.
-    pub fn on_trigger_enter(&self, trigger_id: &str, entity_id: &str) -> Vec<RuleOutcome> {
-        let Some(ast) = &self.scoring_ast else {
-            return Vec::new();
-        };
-        if !ast
-            .iter_functions()
-            .any(|function| function.name == "on_trigger_enter" && function.params.len() == 2)
-        {
-            return Vec::new();
-        }
-        let mut scope = Scope::new();
-        if let Err(error) = self.engine.call_fn::<()>(
-            &mut scope,
-            ast,
-            "on_trigger_enter",
-            (trigger_id.to_string(), entity_id.to_string()),
-        ) {
-            error!(%error, %trigger_id, %entity_id, "Rhai trigger hook failed");
-        }
-        self.outcomes
-            .lock()
-            .map(|mut outcomes| std::mem::take(&mut *outcomes))
-            .unwrap_or_default()
     }
 
     fn compile_script(&self, source: &str) -> Result<AST, rhai::ParseError> {

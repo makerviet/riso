@@ -1679,6 +1679,7 @@ dependencies = [
  "reqwest",
  "rhai",
  "riso-rules",
+ "rust_decimal",
  "semver",
  "serde",
  "serde_json",
