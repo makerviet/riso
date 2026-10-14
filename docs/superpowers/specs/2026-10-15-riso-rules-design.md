@@ -107,7 +107,7 @@ Mỗi ô có `label` tiếng Việt; tuỳ chọn có `label_en` và `help`.
 | Cấp đang tính | Tên truy cập được |
 |---|---|
 | `robot` | các ô `robot` của chính robot đó; `constants` |
-| `side` | ô `side` của liên minh; `robots.<tên>` (mảng giá trị robot của liên minh); `field.<tên>`; `<side_id>.<tên>` (ví dụ `red.su_wildfire`); `opponent.<tên>`; `constants` |
+| `side` | ô và giá trị `side` của chính liên minh; `robots.<tên>` (mảng giá trị robot của liên minh); `field.<tên>` (ô và giá trị field); `<side_id>.<tên ô side>` và `opponent.<tên ô side>` (**chỉ ô biên bản**, không phải giá trị tính, để tránh phụ thuộc chéo giữa hai liên minh); `constants` |
 | `field` | ô `field`; `all_robots.<tên>` (mảng giá trị robot toàn sân); `<side_id>.<tên ô side>`; `constants` |
 
 - `bool` được tính là 1/0 khi đưa vào `sum` và `count`.
@@ -177,13 +177,13 @@ sides:
     su_wildfire: 120
     robots:  [ { climb: ZONE_2, lifted_by_partner: false }, {...}, {...} ]
     fouls:   { minor: 0, major: 0 }
-    teams:   [ { id: "VIE", card: none }, { id: "LAO", card: none }, { id: "BRU", card: yellow } ]
+    teams:   [ { id: "VIE" }, { id: "LAO" }, { id: "BRU", card: yellow } ]   # tuỳ chọn; thiếu thì không áp thẻ
   blue: {...}
 source: referee | simulation
 not_simulated: [ "robot.lifted_by_partner" ]   # chỉ khi source = simulation
 ```
 
-Validate biên bản: đủ ô, `count` ≥ 0 và ≤ `max`, `choice` hợp lệ, số robot mỗi liên minh = `sides.teams`.
+Validate biên bản: đủ ô, `count` là số nguyên ≥ 0 và ≤ `max`, `choice` hợp lệ, số robot mỗi liên minh = `sides.teams`, `card` thuộc `cards`. Ô `count` là số nguyên (`i64`).
 
 ## 6. Hai đề mẫu
 
@@ -310,6 +310,8 @@ open_questions:
     source: "Manual ghi '0 < σ ≤ 1', bỏ sót σ = 0; máy tính Sheets: IFS(σ<=1, 0, ...)"
 ```
 
+Sai số 0,59999 của máy tính Sheets không bao giờ làm đổi điểm cuối: mọi khoản trước làm tròn là bội của 0,025 trong khi sai số tối đa là 120 × 0,000012 ≈ 0,0014. Ngược lại, máy tính FGC 2026 dùng số thực JS nên **có ca sai thật**: 50 bóng, một robot Zone 1 → JS `ceil(55.00000000000001) = 56`, đúng luật là 55.
+
 Ghi chú: `stddev` trả số thập phân làm tròn ở 28 chữ số có nghĩa (căn bậc hai của `rust_decimal`). Với số bóng nguyên không có tổ hợp nào cho σ đúng bằng 1 hay 10, nên test dùng cặp sát hai phía ranh giới: (0, 0, 2) (σ ≈ 0.943) / (0, 1, 3) (σ ≈ 1.247) và (0, 8, 24) (σ ≈ 9.978) / (0, 4, 23) (σ ≈ 10.033).
 
 ## 7. Server mô phỏng
@@ -336,7 +338,7 @@ robot.lifted_by_partner: { not_simulated: false }
 
 1. Lúc nạp gói: `load(rules.yaml)` và parse `observe.yaml`. Lỗi → không nạp được gói, ghi log rõ tên đề và lỗi.
 2. Trong trận, mỗi 0,5 giây: tạo `Observation` tạm, gọi `score`, gửi bảng điểm tạm tính.
-3. Tại `match_finalizes` (hết giờ + 5 giây đứng yên): tạo `Observation` chính thức, gọi `score`, ghi `result.observation`, `result.scoreSheet`, `result.rulesVersion` vào `MatchCompletionReport`. Giữ `redScore`/`blueScore` để tương thích.
+3. Ô cấp `robot` được chốt tại tiếng còi hết giờ (giữ hành vi hiện tại `endgame_brace_multipliers`, tránh robot trượt khỏi brace làm đổi điểm); ô `field`/`side` được đo tại `match_finalizes` (hết giờ + `POST_MATCH_SETTLE` 3,5 giây hiện có; manual G21 dùng 5 giây — giữ 3,5 giây để không đổi nhịp trận, ghi trong `open_questions` của observe). Tại `match_finalizes`: tạo `Observation` chính thức, gọi `score`, ghi `result.observation`, `result.scoreSheet`, `result.rulesVersion` vào `MatchCompletionReport`. Giữ `redScore`/`blueScore` để tương thích.
 4. Nếu `score` lỗi trong trận: giữ bảng điểm hợp lệ gần nhất, gắn cờ `scoringError`, ghi log, trận vẫn chạy tiếp.
 
 ### 7.3 Gỡ bỏ
@@ -351,19 +353,20 @@ robot.lifted_by_partner: { not_simulated: false }
 ### 7.4 Giao thức FGS1
 
 - Section điểm cũ giữ nguyên định dạng, chứa `red`/`blue` lấy từ điểm cuối đã làm tròn; `global` = 0; `breakdown` = các giá trị có `label` ở dạng số nguyên đã làm tròn.
-- **Section mới, tag 7:** JSON UTF-8 của `ScoreSheet` (nhãn, giá trị thập phân dạng chuỗi, `not_simulated`, `scoringError`). Chỉ gửi khi bảng điểm thay đổi.
-- Minor version 2 → 3. Cập nhật `docs/match-state-protocol.md` và bộ giải mã TypeScript.
-- Bảng điểm trên web hiển thị section 7 nếu có, không có thì dùng section cũ.
+- **Section mới, tag 14 `SCORE_SHEET`** (tag 1–13 đã dùng; 7 là `SEMANTIC_EVENTS`, 9 là `SCORE`): chuỗi JSON UTF-8 của `ScoreSheet` (nhãn, giá trị thập phân dạng chuỗi, `not_simulated`, `scoringError`). Gửi trong baseline và mỗi khi bảng điểm thay đổi.
+- Minor version 5 → 6 (`protocol.rs` đang ghi 5; `docs/match-state-protocol.md` ghi 2 là đã lỗi thời, sửa luôn).
+- Trang trận đấu có bảng "Chi tiết điểm" đọc section 14; không có thì chỉ hiện điểm cũ.
 
 ### 7.5 Manifest và API
 
 - `manifest.json` thêm `"rules": { "scoring": "rules.yaml", "observe": "observe.yaml" }`.
-- API endpoint `runtime` trả thêm `rules` và `observe`.
-- `rules.yaml` được thêm vào danh sách tài sản công khai, vì luật điểm vốn công khai trong game manual. `observe.yaml` và các file `.rhai` vẫn chỉ cấp cho server game.
+- API endpoint `runtime` trả thêm `rules` (nội dung `rules.yaml` của đề và các đề cha, dạng `{ id: yaml }`) và `observe`.
+- **Route công khai mới** `GET /api/rules` (danh sách đề có luật, đọc từ `pkgs/games/index.json`) và `GET /api/rules/:id` (nội dung `rules.yaml`, `text/yaml`). Luật điểm vốn công khai trong game manual. `observe.yaml` và các file `.rhai` vẫn chỉ cấp cho server game.
+- API hiện cố định một đề (`PACK_ID = 'fgc-2026'`) cho mô phỏng; route `/api/rules/:id` đọc được mọi đề trong `index.json`.
 
 ## 8. Trang trọng tài `/referee/[gameId]`
 
-- Không cần đăng nhập. Tải `rules.yaml` công khai cùng các đề cha (`extends`), chạy bản WASM.
+- Không cần đăng nhập. Tải `/api/rules/:id` cùng các đề cha (`extends`), chạy bản WASM. Trang `/referee` liệt kê các đề từ `/api/rules`.
 - Form tự sinh từ `inputs`: cấp field ở trên, hai cột liên minh, mỗi robot một hàng. Mỗi liên minh có bộ đếm lỗi theo `fouls`, mỗi đội có ô mã đội và lựa chọn thẻ theo `cards`.
 - Mỗi lần thay đổi thì tính lại ngay. Cột kết quả hiện các giá trị có `label` (giá trị thập phân và giá trị sau làm tròn), điểm phạt, điểm cuối, và điểm từng đội sau thẻ.
 - Lỗi biên bản hiện ngay cạnh ô nhập liên quan.
