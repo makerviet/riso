@@ -106,7 +106,7 @@ it('describe() trả RulesFile đã kế thừa', () => {
 it('rank() xếp hạng các đội từ các biên bản', () => {
 	const h = new RulesHandle(fgc26(), '{}');
 	const results = ['07-cards.yaml', '01-basic.yaml'].map((f, i) => {
-		const obs = caseObs('fgc-2026', f) as { sides: Record<string, { teams?: unknown }> };
+		const obs = caseObs('fgc-2026', f) as unknown as { sides: Record<string, { teams?: unknown }> };
 		for (const side of Object.values(obs.sides)) {
 			side.teams ??= [{ id: `T${i}a` }, { id: `T${i}b` }, { id: `T${i}c` }];
 		}
