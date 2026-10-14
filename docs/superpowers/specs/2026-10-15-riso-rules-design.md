@@ -101,7 +101,7 @@ Mỗi ô có `label` tiếng Việt; tuỳ chọn có `label_en` và `help`.
 
 ### 4.3 Công thức
 
-- Công thức là **biểu thức Rhai**, build với `no_float` + `decimal`: mọi số là `rust_decimal::Decimal`, chữ số `0.05` được hiểu là số thập phân chính xác.
+- Công thức là **biểu thức Rhai** (feature `decimal` + `sync`, **không** dùng `no_float` vì Cargo gộp feature với Rhai của server và sẽ tắt số thực trong `arena.rhai`/`robot.rhai`). Trước khi biên dịch, mọi chữ số ngoài chuỗi được đổi thành `__d("…")` → `rust_decimal::Decimal`; mọi ô biên bản cũng nạp dạng `Decimal`. Nhờ vậy `0.05` là số thập phân chính xác và `1 / 3` = 0,333… (không phải phép chia nguyên).
 - **Tên dùng được trong công thức:**
 
 | Cấp đang tính | Tên truy cập được |
@@ -426,8 +426,8 @@ web/src/routes/(public)/referee/[gameId]/+page.svelte (+ components)
 
 | Giả định | Cách kiểm chứng (task đầu của kế hoạch) | Nếu sai |
 |---|---|---|
-| Rhai build với `no_float` + `decimal` hiểu chữ số `0.05` là `Decimal` | Spike: biểu thức `ceil(20 * 1.05)` ra 21 | Tiền xử lý công thức: chuyển chữ số thập phân thành lời gọi `dec("0.05")` |
-| Rhai + `rust_decimal` biên dịch được sang `wasm32-unknown-unknown` | Spike: `wasm-pack build` với một hàm `score` tối thiểu | Tách lớp tính toán ra khỏi Rhai: tự viết bộ phân tích biểu thức nhỏ |
+| ~~`no_float` + `decimal`~~ → tiền xử lý chữ số thành `__d("…")` | **Đã kiểm chứng 15/10/2026:** `ceil(20*1.05)=21`, `1/3=0,333…`; server vẫn qua 56 test khi Rhai bật thêm `decimal`, `sync` | — |
+| Rhai + `rust_decimal` biên dịch được sang `wasm32-unknown-unknown` | **Đã kiểm chứng:** build được khi bật feature `wasm-bindgen` của Rhai + `getrandom 0.2` feature `js` cho target wasm32 | — |
 | Tắt `while`/`loop`/`for`/`fn` bằng `Engine::disable_symbol` là đủ | Test hộp cát | Dùng `Engine::on_parse_token` để chặn |
 | `score()` FGC 2026 < 1 ms | Benchmark | Gọi mỗi 1 giây thay vì 0,5 giây |
 
