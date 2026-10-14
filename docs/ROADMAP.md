@@ -10,12 +10,21 @@
 - Trận chỉ có TELEOP 150 s, chưa có AUTO/ENDGAME.
 - Control plane khoá vào Cloudflare (Workers, D1, Durable Objects, R2) và Fly.io.
 
-## Giai đoạn 1 — Bộ máy tính điểm kiểu FIRST
+## Giai đoạn 1 — Bộ máy tính điểm kiểu FIRST — Xong (10/2026)
 
 - Đặc tả điểm khai báo bằng file (JSON/YAML + JSON Schema): vật phẩm, vùng, giai đoạn
   AUTO/TELEOP/ENDGAME, hệ số nhân, lỗi phạt, Coopertition. Rhai chỉ cho luật đặc biệt.
 - Gỡ phần điểm viết cứng khỏi Rust; nối đủ các hook.
 - Bảng chi tiết điểm từng trận (score breakdown).
+
+Đã làm: crate `riso-rules` (rules.yaml, biên bản, `riso check`, WASM), server tính điểm từ luật, trang `/referee`, CI job `rules`.
+
+Còn tồn / ngoài phạm vi:
+
+- Extinguisher và Partner climb chưa mô phỏng (chấm tay trên biên bản, `not_simulated`).
+- SeaHeal chờ ban tổ chức công bố luật.
+- Phần cộng điểm viết cứng trong Rust đã gỡ; `on_phase_start`, `on_match_end`, `penalties.rhai` vẫn chưa nối.
+- `pnpm run check` ở `web/` còn 9 lỗi typed-href có sẵn từ upstream (layouts, trang auth) nên job CI `web` đỏ ở bước này; chưa sửa trong giai đoạn 1.
 
 ## Giai đoạn 2 — Tầng quản lý giải
 

@@ -21,20 +21,61 @@ jobs:
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: server
+          workspaces: |
+            server
+            crates/riso-rules
       - run: cargo fmt --all -- --check
       - run: cargo test --all-targets
         env:
           RUSTFLAGS: -D warnings
 
+  rules:
+    name: Rules engine
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crates/riso-rules
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates/riso-rules
+      - run: cargo fmt --all -- --check
+      - run: cargo test --all-targets
+        env:
+          RUSTFLAGS: -D warnings
+      - name: Kiểm tra luật các đề
+        run: |
+          dirs=""
+          for d in ../../pkgs/games/*/; do
+            [ -f "${d}rules.yaml" ] && dirs="$dirs $d"
+          done
+          cargo run --features cli --bin riso -- check $dirs
+      - run: cargo install wasm-pack --locked
+      - run: ./scripts/build-rules-wasm.sh
+        working-directory: .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: riso-rules-wasm
+          path: crates/riso-rules/pkg
+
   web:
     name: Web client
     runs-on: ubuntu-latest
+    needs: rules
     defaults:
       run:
         working-directory: web
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: riso-rules-wasm
+          path: crates/riso-rules/pkg
       - uses: pnpm/action-setup@v4
         with:
           version: 11.1.3
@@ -46,6 +87,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run check:bindings
       - run: pnpm run check
+      - run: pnpm vitest run
       - run: pnpm run build
 
   api:

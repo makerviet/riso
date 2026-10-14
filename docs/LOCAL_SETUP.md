@@ -2,7 +2,7 @@
 
 Đã kiểm chứng ngày 15/10/2026 trên macOS (Apple Silicon) và Ubuntu 24.04 (x86_64).
 
-Yêu cầu: Node 24+, pnpm, Rust (rustup, bản stable).
+Yêu cầu: Node 24+, pnpm, Rust (rustup, bản stable), `wasm-pack` (`cargo install wasm-pack --locked`) và target `wasm32-unknown-unknown`.
 
 ## 1. API (cổng 8787)
 
@@ -39,8 +39,11 @@ pnpm wrangler d1 execute fgsim --local --config wrangler.jsonc \
 ## 3. Web (cổng 5173)
 
 ```sh
+./scripts/build-rules-wasm.sh   # build WASM bộ máy luật (chạy từ thư mục gốc repo)
 cd web && pnpm install && pnpm dev
 ```
+
+Trang chấm điểm trận thật: http://localhost:5173/referee
 
 ## 4. Máy chủ game (cổng 3000)
 
@@ -53,11 +56,14 @@ cargo build --release
 API_URL=http://localhost:8787 GAME_SERVER_KEY=<khoá> ./target/release/server
 ```
 
+Máy chủ game giờ **bắt buộc** có `rules.yaml` và `observe.yaml` của đề trong gói runtime (snapshot do API phục vụ); thiếu thì không mở trận.
+
 Mở http://localhost:5173 → **Open arena**.
 
 ## Kiểm thử & đo hiệu năng
 
 ```sh
+(cd crates/riso-rules && cargo test --all-targets)
 cd server
 cargo test --release
 cargo test --release benchmark_1000_ball_robot_interaction -- --ignored --nocapture
