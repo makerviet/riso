@@ -80,10 +80,6 @@ fn resolve(yaml: &str, resolver: &dyn PackResolver, chain: &mut Vec<String>) -> 
     if chain.len() > MAX_EXTENDS_DEPTH {
         return Err(vec![RuleError::new("RULE_EXTENDS", "extends", format!("kế thừa quá {MAX_EXTENDS_DEPTH} tầng"))]);
     }
-    if chain.contains(&parent_id) {
-        chain.push(parent_id);
-        return Err(vec![RuleError::new("RULE_EXTENDS", "extends", format!("kế thừa vòng: {}", chain.join(" → ")))]);
-    }
     let parent_src = resolver.rules_yaml(&parent_id).ok_or_else(|| {
         vec![RuleError::new("RULE_EXTENDS", "extends", format!("không tìm thấy đề cha '{parent_id}'"))]
     })?;
@@ -230,6 +226,7 @@ mod tests {
         let errors = parse_rules(&bad, &NoParents).unwrap_err();
         assert_eq!(errors[0].code, "RULE_SCHEMA");
         assert_eq!(errors[0].path, "inputs.robot.parked");
+        assert_eq!(errors[0].line, Some(12));
     }
 
     #[test]
@@ -244,5 +241,34 @@ mod tests {
     fn line_of_finds_nested_keys() {
         assert_eq!(crate::error::line_of(BASE, "values.side.park_bonus"), Some(18));
         assert_eq!(crate::error::line_of(BASE, "nope.nothing"), None);
+    }
+
+    #[test]
+    fn extends_depth_over_limit_is_rejected() {
+        let mut map = BTreeMap::new();
+        for i in 0..5 {
+            let src = CHILD
+                .replace("extends: base-game", &format!("extends: g{}", i + 1))
+                .replace("game: child-game", &format!("game: g{i}"));
+            map.insert(format!("g{i}"), src);
+        }
+        map.insert("g5".to_string(), BASE.replace("game: base-game", "game: g5"));
+        let errors = parse_rules(&map["g0"].clone(), &MapResolver(map)).unwrap_err();
+        assert_eq!(errors[0].code, "RULE_EXTENDS");
+        assert!(errors[0].message.contains("quá"), "{}", errors[0].message);
+    }
+
+    #[test]
+    fn override_through_non_mapping_is_rejected() {
+        let bad = CHILD.split("override:").next().unwrap().to_string() + "override:\n  score.x: 1\n";
+        let errors = parse_rules(&bad, &resolver()).unwrap_err();
+        assert_eq!(errors[0].code, "RULE_EXTENDS");
+        assert_eq!(errors[0].path, "override.score.x");
+    }
+
+    #[test]
+    fn unknown_top_level_field_is_rejected() {
+        let bad = format!("{BASE}bogus: 1\n");
+        assert_eq!(parse_rules(&bad, &NoParents).unwrap_err()[0].code, "RULE_YAML");
     }
 }
