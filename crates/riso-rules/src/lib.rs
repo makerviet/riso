@@ -2,19 +2,20 @@
 pub mod error;
 pub mod expr;
 pub mod extends;
-// Các trường Plan/Rules chưa được đọc cho tới khi có bộ tính điểm (Task 4+).
-#[allow(dead_code)]
+mod eval;
 mod graph;
+pub mod model;
 pub mod schema;
 
 pub use error::{RuleError, ScoreError};
+pub use eval::score;
+pub use model::{FoulLine, InputValue, LineItem, Observation, ScoreSheet, SideObservation, SideSheet, TeamEntry, TeamResult};
 pub use extends::{MapResolver, NoParents, PackResolver};
 pub use schema::RulesFile;
 
 use rhai::{Dynamic, Engine, Map};
 
 /// Luật đã kiểm tra và biên dịch, sẵn sàng tính điểm. `Send + Sync`.
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Rules {
     pub file: RulesFile,

@@ -26,6 +26,7 @@ pub(crate) struct Plan {
     pub side: Vec<Node>,
     pub fouls: Vec<FoulNode>,
     pub score: Node,
+    #[allow(dead_code)] // dùng ở Task 5
     pub tiebreakers: Vec<Node>,
 }
 
