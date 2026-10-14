@@ -8,14 +8,22 @@ pub(super) fn encode_state(
     process: ProcessMetrics,
     include_physics: bool,
     include_debug: bool,
+    include_score_sheet: bool,
 ) -> Vec<u8> {
-    encode_snapshot(state, process, include_physics, include_debug, false)
+    encode_snapshot(
+        state,
+        process,
+        include_physics,
+        include_debug,
+        include_score_sheet,
+        false,
+    )
 }
 
 /// A join baseline includes sleeping-object positions so a reconnect never
 /// depends on deltas observed by an older socket.
 pub(super) fn encode_baseline(state: &MatchStateSync, process: ProcessMetrics) -> Vec<u8> {
-    encode_snapshot(state, process, true, false, true)
+    encode_snapshot(state, process, true, false, true, true)
 }
 
 fn encode_snapshot(
@@ -23,6 +31,7 @@ fn encode_snapshot(
     process: ProcessMetrics,
     include_physics: bool,
     include_debug: bool,
+    include_score_sheet: bool,
     baseline: bool,
 ) -> Vec<u8> {
     const METADATA: u16 = 1;
@@ -38,6 +47,7 @@ fn encode_snapshot(
     const TRANSFER_DEBUG: u16 = 11;
     const BALL_DEBUG: u16 = 12;
     const INPUT_ACKS: u16 = 13;
+    const SCORE_SHEET: u16 = 14;
     let object_positions = if baseline {
         &state.baseline_object_positions
     } else {
@@ -46,7 +56,7 @@ fn encode_snapshot(
     let mut output = Vec::with_capacity(1024 + object_positions.count as usize * 12);
     output.extend_from_slice(b"FGS1");
     put_u16(&mut output, 1);
-    put_u16(&mut output, 5);
+    put_u16(&mut output, 6);
     put_u16(&mut output, 1); // StateSnapshot
     put_u16(&mut output, 0);
     put_u32(&mut output, 0);
@@ -221,6 +231,18 @@ fn encode_snapshot(
             put_i32(bytes, *points);
         }
     });
+    // Section 14 mang cả biên bản chấm điểm (vài KB) nên chỉ gửi khi cần:
+    // baseline, khung đầy đủ định kỳ, hoặc ngay khi bảng điểm đổi.
+    if include_score_sheet && (state.score.sheet.is_some() || state.score.scoring_error.is_some()) {
+        let json = serde_json::json!({
+            "sheet": state.score.sheet.as_deref(),
+            "scoringError": state.score.scoring_error,
+        })
+        .to_string();
+        section(&mut output, SCORE_SHEET, |bytes| {
+            put_long_string(bytes, &json)
+        });
+    }
     if include_debug {
         section(&mut output, SEMANTIC_EVENTS, |bytes| {
             put_u16(bytes, state.semantic_events.len() as u16);

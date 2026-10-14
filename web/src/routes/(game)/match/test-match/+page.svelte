@@ -18,12 +18,14 @@
 	import ScriptedObjects from './ScriptedObjects.svelte';
 	import TelemetrySparkline from './TelemetrySparkline.svelte';
 	import ScoreboardGraphic from './ScoreboardGraphic.svelte';
+	import ScoreSheetPanel from './ScoreSheetPanel.svelte';
 	import MatchOverview from './MatchOverview.svelte';
 	import {
 		decodeMatchSnapshot,
 		resetMatchSnapshotDecoder,
 		type MatchPhysics as PhysicsModel,
 		type MatchPlayer as Player,
+		type ScoreSheetSection,
 		type TransferDebugEntry
 	} from './match-protocol';
 	import TransferDebugHUD from './TransferDebugHUD.svelte';
@@ -290,6 +292,7 @@
 	let preMatchRemainingSeconds = $state(0);
 	let matchRunning = $state(false);
 	let practiceRunning = $state(false);
+	let scoreSheet = $state<ScoreSheetSection | null>(null);
 	let blueScore = $state(0);
 	let redScore = $state(0);
 	let globalScore = $state(0);
@@ -1494,6 +1497,7 @@
 								(blueScore !== message.score.blue ||
 									redScore !== message.score.red ||
 									globalScore !== message.score.global);
+							scoreSheet = message.scoreSheet ?? scoreSheet;
 							blueScore = message.score.blue;
 							redScore = message.score.red;
 							globalScore = message.score.global;
@@ -1601,6 +1605,10 @@
 		{blueRoster}
 		templateUrl={fieldAssets?.ui?.scoreboard}
 	/>
+
+	<div class="pointer-events-none absolute top-24 left-3 z-10">
+		<ScoreSheetPanel data={scoreSheet} />
+	</div>
 
 	{#if matchOverviewVisible}
 		<MatchOverview

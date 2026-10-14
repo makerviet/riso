@@ -58,9 +58,8 @@ fn bootstrap_requires_a_frozen_driver_robot_revision() {
     assert!(validate_bootstrap_robot_revisions(&frozen_custom).is_ok());
 }
 
-#[test]
-fn binary_state_has_versioned_header_and_compact_positions() {
-    let state = MatchStateSync {
+fn test_state() -> MatchStateSync {
+    MatchStateSync {
         tick: 7,
         game_pack_id: "pack".into(),
         game_pack_version: "1".into(),
@@ -106,11 +105,16 @@ fn binary_state_has_versioned_header_and_compact_positions() {
         transfer_debug: Vec::new(),
         ball_debug: Vec::new(),
         ball_contact_colliders: Vec::new(),
-    };
-    let encoded = encode_state(&state, ProcessMetrics::default(), false, false);
+    }
+}
+
+#[test]
+fn binary_state_has_versioned_header_and_compact_positions() {
+    let state = test_state();
+    let encoded = encode_state(&state, ProcessMetrics::default(), false, false, false);
     assert_eq!(&encoded[..4], b"FGS1");
     assert_eq!(u16::from_le_bytes(encoded[4..6].try_into().unwrap()), 1);
-    assert_eq!(u16::from_le_bytes(encoded[6..8].try_into().unwrap()), 5);
+    assert_eq!(u16::from_le_bytes(encoded[6..8].try_into().unwrap()), 6);
     assert_eq!(u16::from_le_bytes(encoded[8..10].try_into().unwrap()), 1);
     assert_eq!(
         u32::from_le_bytes(encoded[12..16].try_into().unwrap()) as usize,
@@ -258,4 +262,54 @@ fn final_score_uses_robot_states_locked_at_buzzer() {
         obs.sides["red"].robots[0]["climb"],
         riso_rules::InputValue::Text("ZONE_3".into())
     );
+}
+
+/// Tìm payload của một section theo tag trong khung FGS1.
+fn find_section(bytes: &[u8], wanted: u16) -> Option<Vec<u8>> {
+    let mut offset = 16;
+    let mut found = None;
+    while offset + 8 <= bytes.len() {
+        let tag = u16::from_le_bytes([bytes[offset], bytes[offset + 1]]);
+        let len = u32::from_le_bytes(bytes[offset + 4..offset + 8].try_into().unwrap()) as usize;
+        if tag == wanted {
+            found = Some(bytes[offset + 8..offset + 8 + len].to_vec());
+        }
+        offset += 8 + len;
+    }
+    found
+}
+
+fn state_with_blank_sheet() -> MatchStateSync {
+    let mut state = test_state();
+    let rules = riso_rules::load(
+        include_str!("../../../../pkgs/games/fgc-2026/rules.yaml"),
+        &riso_rules::NoParents,
+    )
+    .unwrap();
+    let sheet = std::sync::Arc::new(riso_rules::score(&rules, &rules.blank_observation()).unwrap());
+    state.score = ScoreState::from_sheet(sheet);
+    state
+}
+
+#[test]
+fn snapshot_carries_score_sheet_section_14() {
+    let state = state_with_blank_sheet();
+    let bytes = encode_state(&state, ProcessMetrics::default(), false, false, true);
+    assert_eq!(u16::from_le_bytes([bytes[6], bytes[7]]), 6, "minor version");
+    let payload = find_section(&bytes, 14).expect("phải có section 14");
+    let text_len = u32::from_le_bytes(payload[0..4].try_into().unwrap()) as usize;
+    assert_eq!(payload.len(), 4 + text_len);
+    let json: serde_json::Value = serde_json::from_slice(&payload[4..4 + text_len]).unwrap();
+    assert_eq!(json["sheet"]["game"], "fgc-2026");
+    assert!(json["scoringError"].is_null());
+    eprintln!("section 14 payload bytes: {}", payload.len());
+}
+
+#[test]
+fn score_sheet_section_is_omitted_when_not_requested() {
+    let state = state_with_blank_sheet();
+    let bytes = encode_state(&state, ProcessMetrics::default(), false, false, false);
+    assert!(find_section(&bytes, 14).is_none());
+    let baseline = encode_baseline(&state, ProcessMetrics::default());
+    assert!(find_section(&baseline, 14).is_some());
 }

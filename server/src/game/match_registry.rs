@@ -1071,6 +1071,8 @@ impl MatchRegistry {
                 let mut process_sampler = ProcessSampler::default();
                 let mut process_metrics = ProcessMetrics::default();
                 let mut publish_count = 0u64;
+                // Bảng điểm đã gửi gần nhất (con trỏ Arc + lỗi) để chỉ gửi section 14 khi đổi.
+                let mut sent_sheet: (usize, Option<String>) = (0, None);
                 while !publisher_shutdown.load(Ordering::Relaxed) {
                     publish_count += 1;
                     let now = Instant::now();
@@ -1100,11 +1102,24 @@ impl MatchRegistry {
                     if let Some(state) = state {
                         let include_physics = publish_count % 10 == 1;
                         let include_debug = publisher_debug_subscribers.load(Ordering::Relaxed) > 0;
+                        let sheet_key = (
+                            state
+                                .score
+                                .sheet
+                                .as_ref()
+                                .map_or(0, |sheet| std::sync::Arc::as_ptr(sheet) as usize),
+                            state.score.scoring_error.clone(),
+                        );
+                        let include_score_sheet = include_physics || sheet_key != sent_sheet;
+                        if include_score_sheet {
+                            sent_sheet = sheet_key;
+                        }
                         let _ = publisher_tx.send(Bytes::from(encode_state(
                             &state,
                             process_metrics,
                             include_physics,
                             include_debug,
+                            include_score_sheet,
                         )));
                     }
                 }
@@ -1455,6 +1470,11 @@ fn put_string(output: &mut Vec<u8>, value: &str) {
     let bytes = value.as_bytes();
     put_u16(output, bytes.len().min(u16::MAX as usize) as u16);
     output.extend_from_slice(&bytes[..bytes.len().min(u16::MAX as usize)]);
+}
+/// Chuỗi dài (JSON bảng điểm): tiền tố độ dài u32 thay vì u16.
+fn put_long_string(output: &mut Vec<u8>, value: &str) {
+    put_u32(output, value.len() as u32);
+    output.extend_from_slice(value.as_bytes());
 }
 
 #[cfg(test)]
