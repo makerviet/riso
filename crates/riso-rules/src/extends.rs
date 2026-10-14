@@ -7,7 +7,14 @@ pub const MAX_EXTENDS_DEPTH: usize = 4;
 pub const SCHEMA: &str = "riso.rules/v1";
 /// Tên dành riêng cho phạm vi công thức (spec mục 4.3).
 pub const RESERVED: [&str; 8] = [
-    "robots", "all_robots", "field", "opponent", "matches", "fouls_received", "fouls_committed", "team_score",
+    "robots",
+    "all_robots",
+    "field",
+    "opponent",
+    "matches",
+    "fouls_received",
+    "fouls_committed",
+    "team_score",
 ];
 
 pub trait PackResolver {
@@ -43,7 +50,11 @@ fn set_path(root: &mut Value, path: &str, value: Value) -> Result<(), RuleError>
     let mut node = root;
     for (index, segment) in segments.iter().enumerate() {
         let map = node.as_mapping_mut().ok_or_else(|| {
-            RuleError::new("RULE_EXTENDS", format!("override.{path}"), format!("'{segment}' không nằm trong một khối"))
+            RuleError::new(
+                "RULE_EXTENDS",
+                format!("override.{path}"),
+                format!("'{segment}' không nằm trong một khối"),
+            )
         })?;
         let key = Value::from(*segment);
         if index == segments.len() - 1 {
@@ -58,15 +69,31 @@ fn set_path(root: &mut Value, path: &str, value: Value) -> Result<(), RuleError>
     Ok(())
 }
 
-fn resolve(yaml: &str, resolver: &dyn PackResolver, chain: &mut Vec<String>) -> Result<Value, Vec<RuleError>> {
+fn resolve(
+    yaml: &str,
+    resolver: &dyn PackResolver,
+    chain: &mut Vec<String>,
+) -> Result<Value, Vec<RuleError>> {
     let mut value = parse_value(yaml)?;
-    let map = value
-        .as_mapping_mut()
-        .ok_or_else(|| vec![RuleError::new("RULE_YAML", "", "file luật phải là một khối khoá: giá trị")])?;
-    let game = map.get("game").and_then(Value::as_str).unwrap_or("?").to_string();
+    let map = value.as_mapping_mut().ok_or_else(|| {
+        vec![RuleError::new(
+            "RULE_YAML",
+            "",
+            "file luật phải là một khối khoá: giá trị",
+        )]
+    })?;
+    let game = map
+        .get("game")
+        .and_then(Value::as_str)
+        .unwrap_or("?")
+        .to_string();
     if chain.contains(&game) {
         chain.push(game);
-        return Err(vec![RuleError::new("RULE_EXTENDS", "extends", format!("kế thừa vòng: {}", chain.join(" → ")))]);
+        return Err(vec![RuleError::new(
+            "RULE_EXTENDS",
+            "extends",
+            format!("kế thừa vòng: {}", chain.join(" → ")),
+        )]);
     }
     chain.push(game);
     let Some(parent_id) = map.remove("extends") else {
@@ -75,13 +102,27 @@ fn resolve(yaml: &str, resolver: &dyn PackResolver, chain: &mut Vec<String>) -> 
     };
     let parent_id = parent_id
         .as_str()
-        .ok_or_else(|| vec![RuleError::new("RULE_EXTENDS", "extends", "extends phải là id đề")])?
+        .ok_or_else(|| {
+            vec![RuleError::new(
+                "RULE_EXTENDS",
+                "extends",
+                "extends phải là id đề",
+            )]
+        })?
         .to_string();
     if chain.len() > MAX_EXTENDS_DEPTH {
-        return Err(vec![RuleError::new("RULE_EXTENDS", "extends", format!("kế thừa quá {MAX_EXTENDS_DEPTH} tầng"))]);
+        return Err(vec![RuleError::new(
+            "RULE_EXTENDS",
+            "extends",
+            format!("kế thừa quá {MAX_EXTENDS_DEPTH} tầng"),
+        )]);
     }
     let parent_src = resolver.rules_yaml(&parent_id).ok_or_else(|| {
-        vec![RuleError::new("RULE_EXTENDS", "extends", format!("không tìm thấy đề cha '{parent_id}'"))]
+        vec![RuleError::new(
+            "RULE_EXTENDS",
+            "extends",
+            format!("không tìm thấy đề cha '{parent_id}'"),
+        )]
     })?;
     let mut merged = resolve(&parent_src, resolver, chain)?;
     let overrides = map.remove("override");
@@ -101,28 +142,56 @@ fn resolve(yaml: &str, resolver: &dyn PackResolver, chain: &mut Vec<String>) -> 
 fn structural_checks(rules: &RulesFile) -> Vec<RuleError> {
     let mut errors = Vec::new();
     if rules.schema != SCHEMA {
-        errors.push(RuleError::new("RULE_SCHEMA", "schema", format!("chỉ hỗ trợ '{SCHEMA}'")));
+        errors.push(RuleError::new(
+            "RULE_SCHEMA",
+            "schema",
+            format!("chỉ hỗ trợ '{SCHEMA}'"),
+        ));
     }
     if rules.sides.ids.len() != 2 {
-        errors.push(RuleError::new("RULE_SCHEMA", "sides.ids", "v1 cần đúng 2 liên minh"));
+        errors.push(RuleError::new(
+            "RULE_SCHEMA",
+            "sides.ids",
+            "v1 cần đúng 2 liên minh",
+        ));
     }
     let mut seen_ids = BTreeSet::new();
     for id in &rules.sides.ids {
         if !seen_ids.insert(id) {
-            errors.push(RuleError::new("RULE_SCHEMA", "sides.ids", format!("id liên minh '{id}' bị trùng")));
+            errors.push(RuleError::new(
+                "RULE_SCHEMA",
+                "sides.ids",
+                format!("id liên minh '{id}' bị trùng"),
+            ));
         }
         if RESERVED.contains(&id.as_str()) {
-            errors.push(RuleError::new("RULE_SCHEMA", "sides.ids", format!("id liên minh '{id}' trùng tên dành riêng")));
+            errors.push(RuleError::new(
+                "RULE_SCHEMA",
+                "sides.ids",
+                format!("id liên minh '{id}' trùng tên dành riêng"),
+            ));
         }
     }
     if rules.sides.teams == 0 {
-        errors.push(RuleError::new("RULE_SCHEMA", "sides.teams", "mỗi liên minh cần ít nhất 1 đội"));
+        errors.push(RuleError::new(
+            "RULE_SCHEMA",
+            "sides.teams",
+            "mỗi liên minh cần ít nhất 1 đội",
+        ));
     }
-    for (level, inputs) in [("field", &rules.inputs.field), ("side", &rules.inputs.side), ("robot", &rules.inputs.robot)] {
+    for (level, inputs) in [
+        ("field", &rules.inputs.field),
+        ("side", &rules.inputs.side),
+        ("robot", &rules.inputs.robot),
+    ] {
         for (name, def) in inputs {
             let path = format!("inputs.{level}.{name}");
             if def.kind == InputKind::Choice && def.values.is_empty() {
-                errors.push(RuleError::new("RULE_SCHEMA", path.clone(), "ô choice cần danh sách values"));
+                errors.push(RuleError::new(
+                    "RULE_SCHEMA",
+                    path.clone(),
+                    "ô choice cần danh sách values",
+                ));
             }
             if def.max.is_some_and(|m| m < 0) {
                 errors.push(RuleError::new("RULE_SCHEMA", path, "max phải ≥ 0"));
@@ -131,7 +200,10 @@ fn structural_checks(rules: &RulesFile) -> Vec<RuleError> {
     }
     let mut seen = BTreeSet::new();
     let names = rules
-        .inputs.field.keys().map(|n| ("inputs.field", n))
+        .inputs
+        .field
+        .keys()
+        .map(|n| ("inputs.field", n))
         .chain(rules.inputs.side.keys().map(|n| ("inputs.side", n)))
         .chain(rules.inputs.robot.keys().map(|n| ("inputs.robot", n)))
         .chain(rules.values.robot.keys().map(|n| ("values.robot", n)))
@@ -141,26 +213,50 @@ fn structural_checks(rules: &RulesFile) -> Vec<RuleError> {
     for (block, name) in names {
         let path = format!("{block}.{name}");
         if RESERVED.contains(&name.as_str()) || rules.sides.ids.contains(name) {
-            errors.push(RuleError::new("RULE_NAME", path, format!("'{name}' là tên dành riêng")));
+            errors.push(RuleError::new(
+                "RULE_NAME",
+                path,
+                format!("'{name}' là tên dành riêng"),
+            ));
         } else if !seen.insert(name.clone()) {
-            errors.push(RuleError::new("RULE_NAME", path, format!("tên '{name}' bị trùng")));
+            errors.push(RuleError::new(
+                "RULE_NAME",
+                path,
+                format!("tên '{name}' bị trùng"),
+            ));
         }
     }
     if rules.cards.keys().any(|id| id.is_empty()) {
         errors.push(RuleError::new("RULE_SCHEMA", "cards", "tên thẻ rỗng"));
     }
     if let (Some(_), Some(_)) = (&rules.ranking.drop_lowest, rules.ranking.keep_best) {
-        errors.push(RuleError::new("RULE_SCHEMA", "ranking", "drop_lowest và keep_best không dùng cùng nhau"));
+        errors.push(RuleError::new(
+            "RULE_SCHEMA",
+            "ranking",
+            "drop_lowest và keep_best không dùng cùng nhau",
+        ));
     }
     errors
 }
 
 pub fn parse_rules(yaml: &str, resolver: &dyn PackResolver) -> Result<RulesFile, Vec<RuleError>> {
     let merged = resolve(yaml, resolver, &mut Vec::new())?;
-    let rules: RulesFile = serde_yaml_ng::from_value(merged)
-        .map_err(|error| vec![RuleError::new("RULE_YAML", "", format!("cấu trúc luật không hợp lệ: {error}"))])?;
-    let errors: Vec<RuleError> = structural_checks(&rules).into_iter().map(|e| e.located(yaml)).collect();
-    if errors.is_empty() { Ok(rules) } else { Err(errors) }
+    let rules: RulesFile = serde_yaml_ng::from_value(merged).map_err(|error| {
+        vec![RuleError::new(
+            "RULE_YAML",
+            "",
+            format!("cấu trúc luật không hợp lệ: {error}"),
+        )]
+    })?;
+    let errors: Vec<RuleError> = structural_checks(&rules)
+        .into_iter()
+        .map(|e| e.located(yaml))
+        .collect();
+    if errors.is_empty() {
+        Ok(rules)
+    } else {
+        Err(errors)
+    }
 }
 
 #[cfg(test)]
@@ -172,7 +268,10 @@ mod tests {
     const CHILD: &str = include_str!("../tests/fixtures/child.yaml");
 
     fn resolver() -> MapResolver {
-        MapResolver(BTreeMap::from([("base-game".to_string(), BASE.to_string())]))
+        MapResolver(BTreeMap::from([(
+            "base-game".to_string(),
+            BASE.to_string(),
+        )]))
     }
 
     #[test]
@@ -188,10 +287,22 @@ mod tests {
         let rules = parse_rules(CHILD, &resolver()).expect("child hợp lệ");
         assert_eq!(rules.game, "child-game");
         assert_eq!(rules.version, "0.1.0");
-        assert_eq!(rules.constants["ball_points"], serde_yaml_ng::Value::from(3));
-        assert_eq!(rules.values.side["park_bonus"].expr(), "7 * count(robots.parked)");
-        assert_eq!(rules.values.side["ball_points_total"].expr(), "balls * ball_points");
-        assert_eq!(rules.score, "ball_points_total + park_bonus + fouls_received");
+        assert_eq!(
+            rules.constants["ball_points"],
+            serde_yaml_ng::Value::from(3)
+        );
+        assert_eq!(
+            rules.values.side["park_bonus"].expr(),
+            "7 * count(robots.parked)"
+        );
+        assert_eq!(
+            rules.values.side["ball_points_total"].expr(),
+            "balls * ball_points"
+        );
+        assert_eq!(
+            rules.score,
+            "ball_points_total + park_bonus + fouls_received"
+        );
     }
 
     #[test]
@@ -203,8 +314,12 @@ mod tests {
 
     #[test]
     fn extends_cycle_is_detected() {
-        let a = CHILD.replace("extends: base-game", "extends: b").replace("game: child-game", "game: a");
-        let b = CHILD.replace("extends: base-game", "extends: a").replace("game: child-game", "game: b");
+        let a = CHILD
+            .replace("extends: base-game", "extends: b")
+            .replace("game: child-game", "game: a");
+        let b = CHILD
+            .replace("extends: base-game", "extends: a")
+            .replace("game: child-game", "game: b");
         let resolver = MapResolver(BTreeMap::from([("a".into(), a.clone()), ("b".into(), b)]));
         let errors = parse_rules(&a, &resolver).unwrap_err();
         assert_eq!(errors[0].code, "RULE_EXTENDS");
@@ -213,7 +328,8 @@ mod tests {
 
     #[test]
     fn yaml_syntax_error_has_line() {
-        let errors = parse_rules("schema: riso.rules/v1\ngame: [unclosed\n", &NoParents).unwrap_err();
+        let errors =
+            parse_rules("schema: riso.rules/v1\ngame: [unclosed\n", &NoParents).unwrap_err();
         assert_eq!(errors[0].code, "RULE_YAML");
         assert!(errors[0].line.is_some());
     }
@@ -221,9 +337,15 @@ mod tests {
     #[test]
     fn wrong_schema_and_side_count_are_rejected() {
         let wrong = BASE.replace("riso.rules/v1", "riso.rules/v9");
-        assert_eq!(parse_rules(&wrong, &NoParents).unwrap_err()[0].code, "RULE_SCHEMA");
+        assert_eq!(
+            parse_rules(&wrong, &NoParents).unwrap_err()[0].code,
+            "RULE_SCHEMA"
+        );
         let three = BASE.replace("ids: [red, blue]", "ids: [red, blue, green]");
-        assert_eq!(parse_rules(&three, &NoParents).unwrap_err()[0].code, "RULE_SCHEMA");
+        assert_eq!(
+            parse_rules(&three, &NoParents).unwrap_err()[0].code,
+            "RULE_SCHEMA"
+        );
     }
 
     #[test]
@@ -241,14 +363,23 @@ mod tests {
     #[test]
     fn duplicate_and_reserved_names_are_rejected() {
         let dup = BASE.replace("ball_points_total:", "balls:");
-        assert_eq!(parse_rules(&dup, &NoParents).unwrap_err()[0].code, "RULE_NAME");
+        assert_eq!(
+            parse_rules(&dup, &NoParents).unwrap_err()[0].code,
+            "RULE_NAME"
+        );
         let reserved = BASE.replace("ball_points_total:", "opponent:");
-        assert_eq!(parse_rules(&reserved, &NoParents).unwrap_err()[0].code, "RULE_NAME");
+        assert_eq!(
+            parse_rules(&reserved, &NoParents).unwrap_err()[0].code,
+            "RULE_NAME"
+        );
     }
 
     #[test]
     fn line_of_finds_nested_keys() {
-        assert_eq!(crate::error::line_of(BASE, "values.side.park_bonus"), Some(18));
+        assert_eq!(
+            crate::error::line_of(BASE, "values.side.park_bonus"),
+            Some(18)
+        );
         assert_eq!(crate::error::line_of(BASE, "nope.nothing"), None);
     }
 
@@ -261,7 +392,10 @@ mod tests {
                 .replace("game: child-game", &format!("game: g{i}"));
             map.insert(format!("g{i}"), src);
         }
-        map.insert("g5".to_string(), BASE.replace("game: base-game", "game: g5"));
+        map.insert(
+            "g5".to_string(),
+            BASE.replace("game: base-game", "game: g5"),
+        );
         let errors = parse_rules(&map["g0"].clone(), &MapResolver(map)).unwrap_err();
         assert_eq!(errors[0].code, "RULE_EXTENDS");
         assert!(errors[0].message.contains("quá"), "{}", errors[0].message);
@@ -269,7 +403,8 @@ mod tests {
 
     #[test]
     fn override_through_non_mapping_is_rejected() {
-        let bad = CHILD.split("override:").next().unwrap().to_string() + "override:\n  score.x: 1\n";
+        let bad =
+            CHILD.split("override:").next().unwrap().to_string() + "override:\n  score.x: 1\n";
         let errors = parse_rules(&bad, &resolver()).unwrap_err();
         assert_eq!(errors[0].code, "RULE_EXTENDS");
         assert_eq!(errors[0].path, "override.score.x");
@@ -278,7 +413,10 @@ mod tests {
     #[test]
     fn unknown_top_level_field_is_rejected() {
         let bad = format!("{BASE}bogus: 1\n");
-        assert_eq!(parse_rules(&bad, &NoParents).unwrap_err()[0].code, "RULE_YAML");
+        assert_eq!(
+            parse_rules(&bad, &NoParents).unwrap_err()[0].code,
+            "RULE_YAML"
+        );
     }
 
     #[test]
@@ -286,7 +424,12 @@ mod tests {
         for ids in ["[red, red]", "[field, blue]"] {
             let yaml = BASE.replace("ids: [red, blue]", &format!("ids: {ids}"));
             let errors = parse_rules(&yaml, &NoParents).unwrap_err();
-            assert!(errors.iter().any(|e| e.code == "RULE_SCHEMA" && e.path == "sides.ids"), "{ids}: {errors:?}");
+            assert!(
+                errors
+                    .iter()
+                    .any(|e| e.code == "RULE_SCHEMA" && e.path == "sides.ids"),
+                "{ids}: {errors:?}"
+            );
         }
     }
 }

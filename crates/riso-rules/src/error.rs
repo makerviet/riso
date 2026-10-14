@@ -17,7 +17,12 @@ pub struct ScoreError {
 
 impl RuleError {
     pub fn new(code: &'static str, path: impl Into<String>, message: impl Into<String>) -> Self {
-        Self { code, path: path.into(), line: None, message: message.into() }
+        Self {
+            code,
+            path: path.into(),
+            line: None,
+            message: message.into(),
+        }
     }
 
     pub fn located(mut self, src: &str) -> Self {
@@ -30,14 +35,22 @@ impl RuleError {
 
 impl ScoreError {
     pub fn new(code: &'static str, path: impl Into<String>, message: impl Into<String>) -> Self {
-        Self { code, path: path.into(), message: message.into() }
+        Self {
+            code,
+            path: path.into(),
+            message: message.into(),
+        }
     }
 }
 
 impl std::fmt::Display for RuleError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.line {
-            Some(line) => write!(f, "[{}] {} (dòng {}): {}", self.code, self.path, line, self.message),
+            Some(line) => write!(
+                f,
+                "[{}] {} (dòng {}): {}",
+                self.code, self.path, line, self.message
+            ),
             None => write!(f, "[{}] {}: {}", self.code, self.path, self.message),
         }
     }
@@ -61,11 +74,16 @@ pub fn line_of(src: &str, path: &str) -> Option<usize> {
         for (index, line) in lines.iter().enumerate().skip(from) {
             let indent = line.len() - line.trim_start().len();
             let trimmed = line.trim_start();
-            if found.is_some() && !trimmed.is_empty() && !trimmed.starts_with('#') && indent < min_indent {
+            if found.is_some()
+                && !trimmed.is_empty()
+                && !trimmed.starts_with('#')
+                && indent < min_indent
+            {
                 break;
             }
             if indent >= min_indent
-                && (trimmed.starts_with(&format!("{segment}:")) || trimmed.starts_with(&format!("\"{segment}\":")))
+                && (trimmed.starts_with(&format!("{segment}:"))
+                    || trimmed.starts_with(&format!("\"{segment}\":")))
             {
                 hit = Some((index, indent));
                 break;

@@ -1,16 +1,19 @@
 //! RISO — bộ máy tính điểm khai báo bằng YAML.
 pub mod error;
+mod eval;
 pub mod expr;
 pub mod extends;
-mod eval;
 mod graph;
 pub mod model;
 pub mod schema;
 
 pub use error::{RuleError, ScoreError};
 pub use eval::score;
-pub use model::{FoulLine, InputValue, LineItem, Observation, ScoreSheet, SideObservation, SideSheet, TeamEntry, TeamResult};
 pub use extends::{MapResolver, NoParents, PackResolver};
+pub use model::{
+    FoulLine, InputValue, LineItem, Observation, ScoreSheet, SideObservation, SideSheet, TeamEntry,
+    TeamResult,
+};
 pub use schema::RulesFile;
 
 use rhai::{Dynamic, Engine, Map};
@@ -57,8 +60,17 @@ pub fn load(yaml: &str, resolver: &dyn PackResolver) -> Result<Rules, Vec<RuleEr
     let file = extends::parse_rules(yaml, resolver)?;
     let engine = expr::new_engine();
     let plan = graph::build_plan(&engine, &file, yaml)?;
-    let constants = file.constants.iter().map(|(k, v)| (k.clone(), yaml_to_dynamic(v))).collect();
-    Ok(Rules { file, engine, plan, constants })
+    let constants = file
+        .constants
+        .iter()
+        .map(|(k, v)| (k.clone(), yaml_to_dynamic(v)))
+        .collect();
+    Ok(Rules {
+        file,
+        engine,
+        plan,
+        constants,
+    })
 }
 
 #[cfg(test)]

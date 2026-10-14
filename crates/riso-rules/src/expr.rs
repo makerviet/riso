@@ -6,7 +6,9 @@ pub type EvalResult<T> = Result<T, Box<EvalAltResult>>;
 
 pub const MAX_OPERATIONS: u64 = 10_000;
 pub const MAX_EXPR_DEPTH: usize = 64;
-const FORBIDDEN: [&str; 9] = ["while", "loop", "for", "fn", "import", "eval", "print", "debug", "do"];
+const FORBIDDEN: [&str; 9] = [
+    "while", "loop", "for", "fn", "import", "eval", "print", "debug", "do",
+];
 const KEYWORDS: [&str; 4] = ["if", "else", "true", "false"];
 
 #[derive(Debug, Clone, PartialEq)]
@@ -42,7 +44,9 @@ pub fn scan(src: &str) -> Scan {
         }
         if c.is_ascii_digit() {
             let start = i;
-            while i < chars.len() && (chars[i].is_ascii_digit() || chars[i] == '.' || chars[i] == '_') {
+            while i < chars.len()
+                && (chars[i].is_ascii_digit() || chars[i] == '.' || chars[i] == '_')
+            {
                 i += 1;
             }
             let literal: String = chars[start..i].iter().filter(|ch| **ch != '_').collect();
@@ -59,7 +63,10 @@ pub fn scan(src: &str) -> Scan {
                     i += 1;
                 }
                 chain.push(chars[start..i].iter().collect::<String>());
-                if i + 1 < chars.len() && chars[i] == '.' && (chars[i + 1].is_alphabetic() || chars[i + 1] == '_') {
+                if i + 1 < chars.len()
+                    && chars[i] == '.'
+                    && (chars[i + 1].is_alphabetic() || chars[i + 1] == '_')
+                {
                     i += 1;
                     continue;
                 }
@@ -80,7 +87,11 @@ pub fn scan(src: &str) -> Scan {
         out.push(c);
         i += 1;
     }
-    Scan { rewritten: out, refs, words }
+    Scan {
+        rewritten: out,
+        refs,
+        words,
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -98,13 +109,21 @@ pub struct Compiled {
 
 pub fn compile(engine: &Engine, src: &str) -> Result<Compiled, CompileError> {
     let scanned = scan(src);
-    if let Some(word) = scanned.words.iter().find(|w| FORBIDDEN.contains(&w.as_str())) {
+    if let Some(word) = scanned
+        .words
+        .iter()
+        .find(|w| FORBIDDEN.contains(&w.as_str()))
+    {
         return Err(CompileError::Forbidden(word.clone()));
     }
     let ast = engine
         .compile_expression(&scanned.rewritten)
         .map_err(|error| CompileError::Syntax(error.to_string()))?;
-    Ok(Compiled { source: src.to_string(), ast, refs: scanned.refs })
+    Ok(Compiled {
+        source: src.to_string(),
+        ast,
+        refs: scanned.refs,
+    })
 }
 
 pub fn to_dec(v: &Dynamic) -> EvalResult<Decimal> {
@@ -160,7 +179,9 @@ fn avg(values: &[Decimal]) -> EvalResult<Decimal> {
         return Ok(Decimal::ZERO);
     }
     let n = Decimal::from(values.len() as i64);
-    checked_sum(values, "avg")?.checked_div(n).ok_or_else(|| overflow("avg"))
+    checked_sum(values, "avg")?
+        .checked_div(n)
+        .ok_or_else(|| overflow("avg"))
 }
 
 fn stddev(values: &[Decimal]) -> EvalResult<Decimal> {
@@ -176,7 +197,9 @@ fn stddev(values: &[Decimal]) -> EvalResult<Decimal> {
         squares = squares.checked_add(sq).ok_or_else(|| overflow("stddev"))?;
     }
     let variance = squares.checked_div(n).ok_or_else(|| overflow("stddev"))?;
-    variance.sqrt().ok_or_else(|| "không tính được căn bậc hai".into())
+    variance
+        .sqrt()
+        .ok_or_else(|| "không tính được căn bậc hai".into())
 }
 
 pub fn new_engine() -> Engine {
@@ -194,7 +217,8 @@ pub fn new_engine() -> Engine {
     engine.on_debug(|_, _, _| {});
 
     engine.register_fn("__d", |s: &str| -> EvalResult<Decimal> {
-        s.parse::<Decimal>().map_err(|e| format!("số không hợp lệ '{s}': {e}").into())
+        s.parse::<Decimal>()
+            .map_err(|e| format!("số không hợp lệ '{s}': {e}").into())
     });
     engine.register_fn("ceil", |x: Decimal| x.ceil());
     engine.register_fn("floor", |x: Decimal| x.floor());
@@ -205,25 +229,42 @@ pub fn new_engine() -> Engine {
     engine.register_fn("min", |a: Decimal, b: Decimal| a.min(b));
     engine.register_fn("max", |a: Decimal, b: Decimal| a.max(b));
     engine.register_fn("min", |a: Array| -> EvalResult<Decimal> {
-        decimals(&a)?.into_iter().min().ok_or_else(|| "min của mảng rỗng".into())
+        decimals(&a)?
+            .into_iter()
+            .min()
+            .ok_or_else(|| "min của mảng rỗng".into())
     });
     engine.register_fn("max", |a: Array| -> EvalResult<Decimal> {
-        decimals(&a)?.into_iter().max().ok_or_else(|| "max của mảng rỗng".into())
+        decimals(&a)?
+            .into_iter()
+            .max()
+            .ok_or_else(|| "max của mảng rỗng".into())
     });
-    engine.register_fn("sum", |a: Array| -> EvalResult<Decimal> { checked_sum(&decimals(&a)?, "sum") });
+    engine.register_fn("sum", |a: Array| -> EvalResult<Decimal> {
+        checked_sum(&decimals(&a)?, "sum")
+    });
     engine.register_fn("count", |a: Array| -> EvalResult<Decimal> {
-        Ok(Decimal::from(decimals(&a)?.into_iter().filter(|x| !x.is_zero()).count() as i64))
+        Ok(Decimal::from(
+            decimals(&a)?.into_iter().filter(|x| !x.is_zero()).count() as i64,
+        ))
     });
     engine.register_fn("len", |a: Array| Decimal::from(a.len() as i64));
-    engine.register_fn("avg", |a: Array| -> EvalResult<Decimal> { avg(&decimals(&a)?) });
-    engine.register_fn("stddev", |a: Array| -> EvalResult<Decimal> { stddev(&decimals(&a)?) });
-    engine.register_fn("lookup", |key: Dynamic, table: Map| -> EvalResult<Dynamic> {
-        let k = table_key(&key)?;
-        table
-            .get(k.as_str())
-            .cloned()
-            .ok_or_else(|| format!("lookup: bảng không có khoá '{k}'").into())
+    engine.register_fn("avg", |a: Array| -> EvalResult<Decimal> {
+        avg(&decimals(&a)?)
     });
+    engine.register_fn("stddev", |a: Array| -> EvalResult<Decimal> {
+        stddev(&decimals(&a)?)
+    });
+    engine.register_fn(
+        "lookup",
+        |key: Dynamic, table: Map| -> EvalResult<Dynamic> {
+            let k = table_key(&key)?;
+            table
+                .get(k.as_str())
+                .cloned()
+                .ok_or_else(|| format!("lookup: bảng không có khoá '{k}'").into())
+        },
+    );
     engine.register_fn("steps", |n: Dynamic, table: Map| -> EvalResult<Decimal> {
         let n = to_dec(&n)?;
         let mut best: Option<(Decimal, Decimal)> = None;
@@ -288,14 +329,20 @@ mod tests {
             "su_wildfire * climb_mult + field.coop + count(robots.in_zone3) + __d(\"0.05\")"
         );
         let refs: Vec<String> = s.refs.iter().map(|r| r.join(".")).collect();
-        assert_eq!(refs, vec!["su_wildfire", "climb_mult", "field.coop", "robots.in_zone3"]);
+        assert_eq!(
+            refs,
+            vec!["su_wildfire", "climb_mult", "field.coop", "robots.in_zone3"]
+        );
         assert!(s.words.contains(&"count".to_string()));
     }
 
     #[test]
     fn scan_skips_strings_keywords_and_digits_inside_identifiers() {
         let s = scan("if climb == \"ZONE_3\" { 1 } else { 0 }");
-        assert_eq!(s.rewritten, "if climb == \"ZONE_3\" { __d(\"1\") } else { __d(\"0\") }");
+        assert_eq!(
+            s.rewritten,
+            "if climb == \"ZONE_3\" { __d(\"1\") } else { __d(\"0\") }"
+        );
         let refs: Vec<String> = s.refs.iter().map(|r| r.join(".")).collect();
         assert_eq!(refs, vec!["climb"]);
         let z = scan("ZONE_3 + x2");
@@ -316,20 +363,32 @@ mod tests {
     #[test]
     fn syntax_errors_are_reported() {
         let engine = new_engine();
-        assert!(matches!(compile(&engine, "1 +"), Err(CompileError::Syntax(_))));
+        assert!(matches!(
+            compile(&engine, "1 +"),
+            Err(CompileError::Syntax(_))
+        ));
     }
 
     #[test]
     fn aggregate_builtins() {
         assert_eq!(to_dec(&eval("sum([1, 2.5, true])")).unwrap(), dec("4.5"));
-        assert_eq!(to_dec(&eval("count([0, 1, true, false, 3])")).unwrap(), dec("3"));
+        assert_eq!(
+            to_dec(&eval("count([0, 1, true, false, 3])")).unwrap(),
+            dec("3")
+        );
         assert_eq!(to_dec(&eval("len([0, 0, 0])")).unwrap(), dec("3"));
         assert_eq!(to_dec(&eval("avg([1, 2, 3, 4])")).unwrap(), dec("2.5"));
         assert_eq!(to_dec(&eval("max(2, 7)")).unwrap(), dec("7"));
         assert_eq!(to_dec(&eval("min([4, 2, 9])")).unwrap(), dec("2"));
         let sigma = to_dec(&eval("stddev([30, 40, 50])")).unwrap();
-        assert!((sigma - dec("8.16496580927726")).abs() < dec("0.0000001"), "{sigma}");
-        assert_eq!(to_dec(&eval("stddev([40, 40, 40])")).unwrap(), Decimal::ZERO);
+        assert!(
+            (sigma - dec("8.16496580927726")).abs() < dec("0.0000001"),
+            "{sigma}"
+        );
+        assert_eq!(
+            to_dec(&eval("stddev([40, 40, 40])")).unwrap(),
+            Decimal::ZERO
+        );
     }
 
     #[test]
@@ -356,10 +415,22 @@ mod tests {
             to_dec(&eval_with(&mut scope, "lookup(climb, climb_increment)").unwrap()).unwrap(),
             dec("0.30")
         );
-        assert_eq!(to_dec(&eval_with(&mut scope, "steps(3, coop_bonus)").unwrap()).unwrap(), Decimal::ZERO);
-        assert_eq!(to_dec(&eval_with(&mut scope, "steps(4, coop_bonus)").unwrap()).unwrap(), dec("10"));
-        assert_eq!(to_dec(&eval_with(&mut scope, "steps(6, coop_bonus)").unwrap()).unwrap(), dec("40"));
-        assert_eq!(to_dec(&eval_with(&mut scope, "steps(9, coop_bonus)").unwrap()).unwrap(), dec("40"));
+        assert_eq!(
+            to_dec(&eval_with(&mut scope, "steps(3, coop_bonus)").unwrap()).unwrap(),
+            Decimal::ZERO
+        );
+        assert_eq!(
+            to_dec(&eval_with(&mut scope, "steps(4, coop_bonus)").unwrap()).unwrap(),
+            dec("10")
+        );
+        assert_eq!(
+            to_dec(&eval_with(&mut scope, "steps(6, coop_bonus)").unwrap()).unwrap(),
+            dec("40")
+        );
+        assert_eq!(
+            to_dec(&eval_with(&mut scope, "steps(9, coop_bonus)").unwrap()).unwrap(),
+            dec("40")
+        );
         let missing = eval_with(&mut scope, "lookup(\"NOPE\", climb_increment)").unwrap_err();
         assert!(missing.to_string().contains("NOPE"), "{missing}");
     }
@@ -380,7 +451,10 @@ mod tests {
 
     #[test]
     fn if_expression_returns_decimal() {
-        assert_eq!(to_dec(&eval("if 4 >= 4 { 10 } else { 0.5 }")).unwrap(), dec("10"));
+        assert_eq!(
+            to_dec(&eval("if 4 >= 4 { 10 } else { 0.5 }")).unwrap(),
+            dec("10")
+        );
     }
 
     #[test]
@@ -393,6 +467,9 @@ mod tests {
     fn format_dynamic_normalizes_decimals() {
         assert_eq!(format_dynamic(&Dynamic::from_decimal(dec("1.500"))), "1.5");
         assert_eq!(format_dynamic(&Dynamic::from_bool(true)), "true");
-        assert_eq!(format_dynamic(&Dynamic::from("ZONE_1".to_string())), "ZONE_1");
+        assert_eq!(
+            format_dynamic(&Dynamic::from("ZONE_1".to_string())),
+            "ZONE_1"
+        );
     }
 }

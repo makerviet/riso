@@ -46,16 +46,34 @@ struct Names<'a> {
 
 impl Names<'_> {
     fn robot_names(&self) -> BTreeSet<&str> {
-        self.rules.inputs.robot.keys().chain(self.rules.values.robot.keys()).map(String::as_str).collect()
+        self.rules
+            .inputs
+            .robot
+            .keys()
+            .chain(self.rules.values.robot.keys())
+            .map(String::as_str)
+            .collect()
     }
     fn field_names(&self) -> BTreeSet<&str> {
-        self.rules.inputs.field.keys().chain(self.rules.values.field.keys()).map(String::as_str).collect()
+        self.rules
+            .inputs
+            .field
+            .keys()
+            .chain(self.rules.values.field.keys())
+            .map(String::as_str)
+            .collect()
     }
     fn side_inputs(&self) -> BTreeSet<&str> {
         self.rules.inputs.side.keys().map(String::as_str).collect()
     }
     fn side_names(&self) -> BTreeSet<&str> {
-        self.rules.inputs.side.keys().chain(self.rules.values.side.keys()).map(String::as_str).collect()
+        self.rules
+            .inputs
+            .side
+            .keys()
+            .chain(self.rules.values.side.keys())
+            .map(String::as_str)
+            .collect()
     }
     fn constants(&self) -> BTreeSet<&str> {
         self.rules.constants.keys().map(String::as_str).collect()
@@ -78,21 +96,31 @@ impl Names<'_> {
         if constants.contains(root) {
             return Ok(());
         }
-        let unknown = |m: &str| ("RULE_UNKNOWN_NAME", format!("không có tên '{m}' (trong '{shown}')"));
-        let scope = || ("RULE_SCOPE", format!("'{shown}' không dùng được ở cấp này"));
-        let member_in = |set: BTreeSet<&str>, m: Option<&str>| -> Result<(), (&'static str, String)> {
-            match m {
-                Some(m) if set.contains(m) => Ok(()),
-                Some(m) if known.contains(m) => Err(scope()),
-                Some(m) => Err(unknown(m)),
-                None => Err(scope()),
-            }
+        let unknown = |m: &str| {
+            (
+                "RULE_UNKNOWN_NAME",
+                format!("không có tên '{m}' (trong '{shown}')"),
+            )
         };
+        let scope = || ("RULE_SCOPE", format!("'{shown}' không dùng được ở cấp này"));
+        let member_in =
+            |set: BTreeSet<&str>, m: Option<&str>| -> Result<(), (&'static str, String)> {
+                match m {
+                    Some(m) if set.contains(m) => Ok(()),
+                    Some(m) if known.contains(m) => Err(scope()),
+                    Some(m) => Err(unknown(m)),
+                    None => Err(scope()),
+                }
+            };
         let is_side_id = self.rules.sides.ids.iter().any(|id| id == root);
         match level {
             Level::Tiebreak => {
                 if root != "matches" {
-                    return Err(if known.contains(root) { scope() } else { unknown(root) });
+                    return Err(if known.contains(root) {
+                        scope()
+                    } else {
+                        unknown(root)
+                    });
                 }
                 let mut set = self.side_names();
                 set.insert("team_score");
@@ -102,7 +130,16 @@ impl Names<'_> {
                 if member.is_none() && self.robot_names().contains(root) {
                     return Ok(());
                 }
-                Err(if known.contains(root) || matches!(root, "robots" | "all_robots" | "field" | "opponent") || is_side_id { scope() } else { unknown(root) })
+                Err(
+                    if known.contains(root)
+                        || matches!(root, "robots" | "all_robots" | "field" | "opponent")
+                        || is_side_id
+                    {
+                        scope()
+                    } else {
+                        unknown(root)
+                    },
+                )
             }
             Level::Field => {
                 if member.is_none() && self.field_names().contains(root) {
@@ -114,7 +151,13 @@ impl Names<'_> {
                 if is_side_id {
                     return member_in(self.side_inputs(), member);
                 }
-                Err(if known.contains(root) || matches!(root, "robots" | "field" | "opponent") { scope() } else { unknown(root) })
+                Err(
+                    if known.contains(root) || matches!(root, "robots" | "field" | "opponent") {
+                        scope()
+                    } else {
+                        unknown(root)
+                    },
+                )
             }
             Level::Side | Level::Foul | Level::Score => {
                 if member.is_none() && self.side_names().contains(root) {
@@ -124,7 +167,10 @@ impl Names<'_> {
                     return if level == Level::Score {
                         Ok(())
                     } else if level == Level::Foul {
-                        Err(("RULE_FOUL_REF", format!("điểm phạt không được dùng '{root}'")))
+                        Err((
+                            "RULE_FOUL_REF",
+                            format!("điểm phạt không được dùng '{root}'"),
+                        ))
                     } else {
                         Err(scope())
                     };
@@ -134,7 +180,11 @@ impl Names<'_> {
                     "field" => member_in(self.field_names(), member),
                     "opponent" => member_in(self.side_inputs(), member),
                     _ if is_side_id => member_in(self.side_inputs(), member),
-                    _ => Err(if known.contains(root) || root == "all_robots" { scope() } else { unknown(root) }),
+                    _ => Err(if known.contains(root) || root == "all_robots" {
+                        scope()
+                    } else {
+                        unknown(root)
+                    }),
                 }
             }
         }
@@ -156,11 +206,19 @@ fn compile_node(
     let compiled = match compile(engine, def_expr) {
         Ok(compiled) => compiled,
         Err(CompileError::Forbidden(word)) => {
-            errors.push(RuleError::new("RULE_FORBIDDEN", path, format!("không được dùng '{word}' trong công thức")));
+            errors.push(RuleError::new(
+                "RULE_FORBIDDEN",
+                path,
+                format!("không được dùng '{word}' trong công thức"),
+            ));
             return None;
         }
         Err(CompileError::Syntax(message)) => {
-            errors.push(RuleError::new("RULE_SYNTAX", path, format!("công thức sai cú pháp: {message}")));
+            errors.push(RuleError::new(
+                "RULE_SYNTAX",
+                path,
+                format!("công thức sai cú pháp: {message}"),
+            ));
             return None;
         }
     };
@@ -197,7 +255,10 @@ fn topo(level_name: &str, nodes: Vec<Node>, errors: &mut Vec<RuleError>) -> Vec<
     let mut ordered = Vec::with_capacity(nodes.len());
     let mut remaining: Vec<usize> = (0..nodes.len()).collect();
     while !remaining.is_empty() {
-        let Some(pos) = remaining.iter().position(|&i| deps[i].iter().all(|d| done.contains(d))) else {
+        let Some(pos) = remaining
+            .iter()
+            .position(|&i| deps[i].iter().all(|d| done.contains(d)))
+        else {
             let stuck: Vec<String> = remaining.iter().map(|&i| nodes[i].name.clone()).collect();
             errors.push(RuleError::new(
                 "RULE_CYCLE",
@@ -211,8 +272,17 @@ fn topo(level_name: &str, nodes: Vec<Node>, errors: &mut Vec<RuleError>) -> Vec<
         ordered.push(nodes[index].clone());
     }
     for node in &nodes {
-        if node.compiled.refs.iter().any(|c| c.len() == 1 && c[0] == node.name) {
-            errors.push(RuleError::new("RULE_CYCLE", format!("values.{level_name}.{}", node.name), "giá trị tự tham chiếu"));
+        if node
+            .compiled
+            .refs
+            .iter()
+            .any(|c| c.len() == 1 && c[0] == node.name)
+        {
+            errors.push(RuleError::new(
+                "RULE_CYCLE",
+                format!("values.{level_name}.{}", node.name),
+                "giá trị tự tham chiếu",
+            ));
         }
     }
     ordered
@@ -229,38 +299,115 @@ fn level_nodes(
     let nodes: Vec<Node> = defs
         .iter()
         .filter_map(|(name, def)| {
-            compile_node(engine, names, level, &format!("values.{level_name}.{name}"), name, def.expr(), def.label(), def.label_en(), errors)
+            compile_node(
+                engine,
+                names,
+                level,
+                &format!("values.{level_name}.{name}"),
+                name,
+                def.expr(),
+                def.label(),
+                def.label_en(),
+                errors,
+            )
         })
         .collect();
     topo(level_name, nodes, errors)
 }
 
-pub(crate) fn build_plan(engine: &Engine, rules: &RulesFile, src: &str) -> Result<Plan, Vec<RuleError>> {
+pub(crate) fn build_plan(
+    engine: &Engine,
+    rules: &RulesFile,
+    src: &str,
+) -> Result<Plan, Vec<RuleError>> {
     let names = Names { rules };
     let mut errors = Vec::new();
-    let robot = level_nodes(engine, &names, Level::Robot, "robot", &rules.values.robot, &mut errors);
-    let field = level_nodes(engine, &names, Level::Field, "field", &rules.values.field, &mut errors);
-    let side = level_nodes(engine, &names, Level::Side, "side", &rules.values.side, &mut errors);
+    let robot = level_nodes(
+        engine,
+        &names,
+        Level::Robot,
+        "robot",
+        &rules.values.robot,
+        &mut errors,
+    );
+    let field = level_nodes(
+        engine,
+        &names,
+        Level::Field,
+        "field",
+        &rules.values.field,
+        &mut errors,
+    );
+    let side = level_nodes(
+        engine,
+        &names,
+        Level::Side,
+        "side",
+        &rules.values.side,
+        &mut errors,
+    );
     let fouls: Vec<FoulNode> = rules
         .fouls
         .iter()
         .filter_map(|(id, foul)| {
-            compile_node(engine, &names, Level::Foul, &format!("fouls.{id}"), id, &foul.points, Some(&foul.label), foul.label_en.as_deref(), &mut errors)
-                .map(|node| FoulNode { id: id.clone(), node })
+            compile_node(
+                engine,
+                &names,
+                Level::Foul,
+                &format!("fouls.{id}"),
+                id,
+                &foul.points,
+                Some(&foul.label),
+                foul.label_en.as_deref(),
+                &mut errors,
+            )
+            .map(|node| FoulNode {
+                id: id.clone(),
+                node,
+            })
         })
         .collect();
-    let score = compile_node(engine, &names, Level::Score, "score", "score", &rules.score, None, None, &mut errors);
+    let score = compile_node(
+        engine,
+        &names,
+        Level::Score,
+        "score",
+        "score",
+        &rules.score,
+        None,
+        None,
+        &mut errors,
+    );
     let tiebreakers: Vec<Node> = rules
         .ranking
         .tiebreakers
         .iter()
         .enumerate()
-        .filter_map(|(i, t)| compile_node(engine, &names, Level::Tiebreak, &format!("ranking.tiebreakers.{i}"), &t.label, &t.expr, Some(&t.label), None, &mut errors))
+        .filter_map(|(i, t)| {
+            compile_node(
+                engine,
+                &names,
+                Level::Tiebreak,
+                &format!("ranking.tiebreakers.{i}"),
+                &t.label,
+                &t.expr,
+                Some(&t.label),
+                None,
+                &mut errors,
+            )
+        })
         .collect();
     if !errors.is_empty() {
         return Err(errors.into_iter().map(|e| e.located(src)).collect());
     }
-    Ok(Plan { robot, field, side, fouls, score: score.expect("không lỗi thì có score"), tiebreakers })
+    Ok(Plan {
+        robot,
+        field,
+        side,
+        fouls,
+        score: score.expect("không lỗi thì có score"),
+        tiebreakers,
+    })
 }
 
 #[cfg(test)]
@@ -270,7 +417,12 @@ mod tests {
     const BASE: &str = include_str!("../tests/fixtures/base.yaml");
 
     fn codes(yaml: &str) -> Vec<&'static str> {
-        load(yaml, &NoParents).err().unwrap_or_default().iter().map(|e| e.code).collect()
+        load(yaml, &NoParents)
+            .err()
+            .unwrap_or_default()
+            .iter()
+            .map(|e| e.code)
+            .collect()
     }
 
     #[test]
@@ -293,10 +445,9 @@ mod tests {
 
     #[test]
     fn cycle_is_rule_cycle() {
-        let yaml = BASE.replace("\"balls * ball_points\"", "\"park_bonus + 1\"").replace(
-            "\"5 * count(robots.parked)\"",
-            "\"ball_points_total + 1\"",
-        );
+        let yaml = BASE
+            .replace("\"balls * ball_points\"", "\"park_bonus + 1\"")
+            .replace("\"5 * count(robots.parked)\"", "\"ball_points_total + 1\"");
         assert_eq!(codes(&yaml), vec!["RULE_CYCLE"]);
     }
 
@@ -320,7 +471,10 @@ mod tests {
     fn opponent_can_only_read_inputs() {
         let ok = BASE.replace("\"5 * count(robots.parked)\"", "\"opponent.balls\"");
         assert!(load(&ok, &NoParents).is_ok());
-        let bad = BASE.replace("\"5 * count(robots.parked)\"", "\"opponent.ball_points_total\"");
+        let bad = BASE.replace(
+            "\"5 * count(robots.parked)\"",
+            "\"opponent.ball_points_total\"",
+        );
         assert_eq!(codes(&bad), vec!["RULE_SCOPE"]);
     }
 

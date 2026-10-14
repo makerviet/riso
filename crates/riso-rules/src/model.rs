@@ -27,7 +27,9 @@ impl Visitor<'_> for LenientVisitor {
         Ok(InputValue::Int(v))
     }
     fn visit_u64<E: de::Error>(self, v: u64) -> Result<InputValue, E> {
-        Ok(i64::try_from(v).map(InputValue::Int).unwrap_or_else(|_| InputValue::Text(v.to_string())))
+        Ok(i64::try_from(v)
+            .map(InputValue::Int)
+            .unwrap_or_else(|_| InputValue::Text(v.to_string())))
     }
     fn visit_f64<E: de::Error>(self, v: f64) -> Result<InputValue, E> {
         Ok(InputValue::Text(v.to_string()))
