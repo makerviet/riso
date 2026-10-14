@@ -204,9 +204,12 @@ pub fn rank(rules: &Rules, results: &[MatchResult]) -> Result<Standings, Vec<Sco
                 .unwrap_or(Ordering::Equal)
         })
     };
+    // Thứ tự toàn phần: id số (theo giá trị) đứng trước id không phải số (theo chuỗi).
     let team_number = |a: &str, b: &str| match (a.parse::<i64>(), b.parse::<i64>()) {
         (Ok(x), Ok(y)) => x.cmp(&y),
-        _ => a.cmp(b),
+        (Ok(_), Err(_)) => Ordering::Less,
+        (Err(_), Ok(_)) => Ordering::Greater,
+        (Err(_), Err(_)) => a.cmp(b),
     };
     rows.sort_by(|a, b| primary(a, b).then_with(|| team_number(&a.0.team, &b.0.team)));
     for i in 0..rows.len() {
@@ -353,5 +356,37 @@ mod tests {
             .map(|r| (r.team.as_str(), r.rank, r.tied))
             .collect();
         assert_eq!(order, vec![("9", 1, false), ("10", 2, false)]);
+    }
+
+    #[test]
+    fn team_number_mixed_ids_total_order_no_panic() {
+        let yaml = BASE.replace(
+            "  tiebreakers:",
+            "  final_tiebreak: team_number\n  tiebreakers:",
+        );
+        let rules = load(&yaml, &NoParents).unwrap();
+        let results = vec![
+            played(&rules, "m1", ("10", None), 5, ("9", None), 5),
+            played(&rules, "m2", ("1a", None), 5, ("B", None), 5),
+        ];
+        let standings = rank(&rules, &results).unwrap();
+        let order: Vec<_> = standings.rows.iter().map(|r| r.team.as_str()).collect();
+        assert_eq!(order, vec!["9", "10", "1a", "B"]);
+    }
+
+    #[test]
+    fn tiebreakers_only_see_counted_matches() {
+        let yaml = BASE.replace("max(matches.team_score)", "min(matches.team_score)");
+        let rules = load(&yaml, &NoParents).unwrap();
+        let results = vec![
+            played(&rules, "m1", ("A", None), 10, ("B", None), 1),
+            played(&rules, "m2", ("A", None), 1, ("B", None), 1),
+            played(&rules, "m3", ("A", None), 5, ("B", None), 1),
+        ];
+        let standings = rank(&rules, &results).unwrap();
+        let a = standings.rows.iter().find(|r| r.team == "A").unwrap();
+        // keep_best 2 giữ m1 (20) và m3 (10); m2 (2) bị loại nên min = 10, không phải 2.
+        assert_eq!(a.counted_matches, vec!["m1", "m3"]);
+        assert_eq!(a.tiebreakers, vec!["10"]);
     }
 }
