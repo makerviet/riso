@@ -70,11 +70,8 @@ pub struct ScoringTargetConfig {
     pub semantic_id: String,
     pub kind: String,
     pub alliance: Option<String>,
-    pub points: i32,
     #[serde(default = "default_true")]
     pub enabled: bool,
-    #[serde(default)]
-    pub requires_robot_outtake: bool,
     pub area: Option<ScoringAreaConfig>,
 }
 
@@ -190,9 +187,7 @@ pub struct FieldScoringTarget {
     pub id: String,
     pub kind: String,
     pub alliance: Option<String>,
-    pub points: i32,
     pub enabled: bool,
-    pub requires_robot_outtake: bool,
     pub min: [f32; 3],
     pub max: [f32; 3],
 }

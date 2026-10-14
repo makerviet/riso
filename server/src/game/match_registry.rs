@@ -407,12 +407,6 @@ impl RuntimeBackend {
         }
     }
 
-    fn set_scoring_enabled(&mut self, enabled: bool) {
-        if let Self::Sphere(runtime) = self {
-            runtime.set_scoring_enabled(enabled);
-        }
-    }
-
     fn disable_player_controls(&mut self) {
         match self {
             Self::Rapier(runtime) => runtime.disable_player_controls(),
@@ -440,30 +434,6 @@ impl RuntimeBackend {
                 Err("This legacy runtime does not support clearing field pieces.".to_string())
             }
         }
-    }
-
-    /// Accumulate a single scored outcome into the runtime score ledger.
-    fn apply_score(&mut self, team: &str, category: &str, points: i32) {
-        let score = match self {
-            Self::Rapier(runtime) => &mut runtime.score_state,
-            Self::Sphere(runtime) => &mut runtime.score_state,
-        };
-        match team {
-            "blue" => {
-                score.blue_score += points;
-                if category == "SU" {
-                    score.blue_su_score += points;
-                }
-            }
-            "red" => {
-                score.red_score += points;
-                if category == "SU" {
-                    score.red_su_score += points;
-                }
-            }
-            _ => score.global_score += points,
-        }
-        *score.breakdown.entry(category.to_string()).or_insert(0) += points;
     }
 
     fn score_state(&self) -> ScoreState {
@@ -501,19 +471,6 @@ impl RuntimeBackend {
         match self {
             Self::Rapier(runtime) => runtime.player_snapshots(),
             Self::Sphere(runtime) => runtime.player_snapshots_with_brace_states(triggers),
-        }
-    }
-
-    fn brace_multipliers(&self, triggers: &[super::pack_loader::FieldTrigger]) -> (f32, f32) {
-        match self {
-            Self::Rapier(_) => (1.0, 1.0),
-            Self::Sphere(runtime) => runtime.brace_multipliers(triggers),
-        }
-    }
-
-    fn apply_endgame_brace_multipliers(&mut self, multipliers: (f32, f32)) {
-        if let Self::Sphere(runtime) = self {
-            runtime.apply_endgame_brace_multipliers(multipliers.0, multipliers.1);
         }
     }
 
@@ -1034,8 +991,6 @@ impl MatchRegistry {
                 let mut tick = 0_u64;
                 let mut event_sequence = 0_u64;
                 let mut recent_semantic_events = VecDeque::<String>::with_capacity(16);
-                let mut brace_score_applied = false;
-                let mut endgame_brace_multipliers = None;
 
                 while !simulation_shutdown.load(Ordering::Relaxed) {
                     let now = Instant::now();
@@ -1088,8 +1043,6 @@ impl MatchRegistry {
                                 live_phase_entered = false;
                                 practice_continue = false;
                                 controls_disabled = false;
-                                brace_score_applied = false;
-                                endgame_brace_multipliers = None;
                                 event_sequence = 0;
                                 recent_semantic_events.clear();
                                 if let Some(reports) = &report_tx { let _ = reports.send(MatchReport::Event(MatchEventReport {
@@ -1121,41 +1074,18 @@ impl MatchRegistry {
                     }
                     let match_running = live_phase_entered && clock_now < match_ends;
                     let settling = live_phase_entered && clock_now >= match_ends && clock_now < match_finalizes;
-                    if settling && endgame_brace_multipliers.is_none() {
-                        // Lock the brace result at the final buzzer, then let
-                        // balls keep settling and scoring until completion.
-                        endgame_brace_multipliers =
-                            Some(runtime.brace_multipliers(&pack.field_definition.triggers));
-                    }
                     let scoring_active = match_running || settling;
                     let physics_started = Instant::now();
                     if scoring_active || practice_continue {
-                        runtime.set_scoring_enabled(scoring_active);
                         runtime.step(&pack.arena, 1.0 / 60.0);
                     }
                     for event in runtime.drain_semantic_events() {
                         event_sequence += 1;
-                        let mut label = format!("{} {} ← {}", event.kind, event.target_id, event.entity_id);
+                        let label = format!("{} {} ← {}", event.kind, event.target_id, event.entity_id);
                         if let Some(reports) = &report_tx { let _ = reports.send(MatchReport::Event(MatchEventReport {
                             match_id: match_id.clone(), event_id: format!("{match_id}:{tick}:{event_sequence}"), tick,
                             kind: format!("semantic.{}", event.kind), payload: serde_json::json!({ "targetId": event.target_id, "entityId": event.entity_id }), game_pack_version: pack.manifest.version.clone(),
                         })); }
-                        if scoring_active {
-                            let outcomes = rules.on_trigger_enter(&event.target_id, &event.entity_id);
-                            for outcome in outcomes {
-                                event_sequence += 1;
-                                label.push_str(&format!(" · {} {}/{} +{}", outcome.kind, outcome.team, outcome.category, outcome.points));
-                                // Native scoring: the authored rule's outcome
-                                // is the source of truth for team, category and
-                                // points, so tweaking scoring.rhai rebalances a
-                                // match without a rebuild.
-                                runtime.apply_score(&outcome.team, &outcome.category, outcome.points as i32);
-                                if let Some(reports) = &report_tx { let _ = reports.send(MatchReport::Event(MatchEventReport {
-                                    match_id: match_id.clone(), event_id: format!("{match_id}:{tick}:{event_sequence}"), tick, kind: "score.awarded".to_string(),
-                                    payload: serde_json::json!({ "team": outcome.team, "category": outcome.category, "points": outcome.points }), game_pack_version: pack.manifest.version.clone(),
-                                })); }
-                            }
-                        }
                         recent_semantic_events.push_back(label);
                         while recent_semantic_events.len() > 16 {
                             recent_semantic_events.pop_front();
@@ -1252,17 +1182,6 @@ impl MatchRegistry {
                         if let Ok(mut slot) = latest_state.lock() {
                             *slot = Some(Arc::new(state));
                         }
-                    }
-                    if live_phase_entered && !practice_continue && clock_now >= match_finalizes && !brace_score_applied {
-                        runtime.apply_endgame_brace_multipliers(
-                            endgame_brace_multipliers.unwrap_or((1.0, 1.0)),
-                        );
-                        brace_score_applied = true;
-                        recent_semantic_events.push_back("match_end · brace multipliers applied".into());
-                        while recent_semantic_events.len() > 16 {
-                            recent_semantic_events.pop_front();
-                        }
-                        continue;
                     }
                     if live_phase_entered && !practice_continue && clock_now >= match_finalizes {
                         let score = runtime.score_state();
