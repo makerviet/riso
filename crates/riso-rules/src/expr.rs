@@ -144,13 +144,38 @@ fn table_key(v: &Dynamic) -> EvalResult<String> {
     Ok(to_dec(v)?.normalize().to_string())
 }
 
+fn overflow(function: &str) -> Box<EvalAltResult> {
+    format!("tràn số khi tính {function}").into()
+}
+
+fn checked_sum(values: &[Decimal], function: &str) -> EvalResult<Decimal> {
+    values
+        .iter()
+        .try_fold(Decimal::ZERO, |acc, x| acc.checked_add(*x))
+        .ok_or_else(|| overflow(function))
+}
+
+fn avg(values: &[Decimal]) -> EvalResult<Decimal> {
+    if values.is_empty() {
+        return Ok(Decimal::ZERO);
+    }
+    let n = Decimal::from(values.len() as i64);
+    checked_sum(values, "avg")?.checked_div(n).ok_or_else(|| overflow("avg"))
+}
+
 fn stddev(values: &[Decimal]) -> EvalResult<Decimal> {
     if values.is_empty() {
         return Ok(Decimal::ZERO);
     }
     let n = Decimal::from(values.len() as i64);
-    let mean = values.iter().sum::<Decimal>() / n;
-    let variance = values.iter().map(|x| (*x - mean) * (*x - mean)).sum::<Decimal>() / n;
+    let mean = avg(values).map_err(|_| overflow("stddev"))?;
+    let mut squares = Decimal::ZERO;
+    for x in values {
+        let d = x.checked_sub(mean).ok_or_else(|| overflow("stddev"))?;
+        let sq = d.checked_mul(d).ok_or_else(|| overflow("stddev"))?;
+        squares = squares.checked_add(sq).ok_or_else(|| overflow("stddev"))?;
+    }
+    let variance = squares.checked_div(n).ok_or_else(|| overflow("stddev"))?;
     variance.sqrt().ok_or_else(|| "không tính được căn bậc hai".into())
 }
 
@@ -185,18 +210,12 @@ pub fn new_engine() -> Engine {
     engine.register_fn("max", |a: Array| -> EvalResult<Decimal> {
         decimals(&a)?.into_iter().max().ok_or_else(|| "max của mảng rỗng".into())
     });
-    engine.register_fn("sum", |a: Array| -> EvalResult<Decimal> { Ok(decimals(&a)?.into_iter().sum()) });
+    engine.register_fn("sum", |a: Array| -> EvalResult<Decimal> { checked_sum(&decimals(&a)?, "sum") });
     engine.register_fn("count", |a: Array| -> EvalResult<Decimal> {
         Ok(Decimal::from(decimals(&a)?.into_iter().filter(|x| !x.is_zero()).count() as i64))
     });
     engine.register_fn("len", |a: Array| Decimal::from(a.len() as i64));
-    engine.register_fn("avg", |a: Array| -> EvalResult<Decimal> {
-        let values = decimals(&a)?;
-        if values.is_empty() {
-            return Ok(Decimal::ZERO);
-        }
-        Ok(values.iter().sum::<Decimal>() / Decimal::from(values.len() as i64))
-    });
+    engine.register_fn("avg", |a: Array| -> EvalResult<Decimal> { avg(&decimals(&a)?) });
     engine.register_fn("stddev", |a: Array| -> EvalResult<Decimal> { stddev(&decimals(&a)?) });
     engine.register_fn("lookup", |key: Dynamic, table: Map| -> EvalResult<Dynamic> {
         let k = table_key(&key)?;
@@ -343,6 +362,20 @@ mod tests {
         assert_eq!(to_dec(&eval_with(&mut scope, "steps(9, coop_bonus)").unwrap()).unwrap(), dec("40"));
         let missing = eval_with(&mut scope, "lookup(\"NOPE\", climb_increment)").unwrap_err();
         assert!(missing.to_string().contains("NOPE"), "{missing}");
+    }
+
+    #[test]
+    fn aggregates_overflow_is_error_not_panic() {
+        let mut scope = Scope::new();
+        let max = "79228162514264337593543950335";
+        for src in [
+            "stddev([1000000000000000, 2000000000000000])".to_string(),
+            format!("sum([{max}, {max}])"),
+            format!("avg([{max}, {max}])"),
+        ] {
+            let err = eval_with(&mut scope, &src).expect_err(&src);
+            assert!(err.to_string().contains("tràn số"), "{src}: {err}");
+        }
     }
 
     #[test]
