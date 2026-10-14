@@ -5,6 +5,7 @@ pub mod expr;
 pub mod extends;
 mod graph;
 pub mod model;
+mod rank;
 pub mod schema;
 
 pub use error::{RuleError, ScoreError};
@@ -14,6 +15,7 @@ pub use model::{
     FoulLine, InputValue, LineItem, Observation, ScoreSheet, SideObservation, SideSheet, TeamEntry,
     TeamResult,
 };
+pub use rank::{MatchResult, StandingRow, Standings, rank};
 pub use schema::RulesFile;
 
 use rhai::{Dynamic, Engine, Map};
