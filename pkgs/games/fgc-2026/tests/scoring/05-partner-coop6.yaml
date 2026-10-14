@@ -1,0 +1,22 @@
+name: "Partner climb 25 điểm + Coopertition 6 robot = 40"
+observation:
+  game: fgc-2026
+  field: { ext_wildfire: 0 }
+  sides:
+    red:
+      su_wildfire: 10
+      robots:
+        - { climb: ZONE_3, lifted_by_partner: false }
+        - { climb: ZONE_3, lifted_by_partner: true }
+        - { climb: ZONE_3, lifted_by_partner: false }
+    blue:
+      su_wildfire: 10
+      robots:
+        - { climb: ZONE_3, lifted_by_partner: false }
+        - { climb: ZONE_3, lifted_by_partner: false }
+        - { climb: ZONE_3, lifted_by_partner: false }
+expect:
+  field: { coop: 40, knockdown: 0 }
+  sides:
+    red: { score: 84, values: { partner: 25, su_points: 19 } }
+    blue: { score: 59 }

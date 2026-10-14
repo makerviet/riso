@@ -1,0 +1,18 @@
+name: "Biên bản sai: số bóng vượt 500"
+observation:
+  game: fgc-2026
+  field: { ext_wildfire: 0 }
+  sides:
+    red:
+      su_wildfire: 501
+      robots:
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+    blue:
+      su_wildfire: 0
+      robots:
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+expect_error: OBS_RANGE

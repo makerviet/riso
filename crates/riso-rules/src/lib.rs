@@ -5,6 +5,8 @@ pub mod expr;
 pub mod extends;
 mod graph;
 pub mod model;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod pack;
 mod rank;
 pub mod schema;
 

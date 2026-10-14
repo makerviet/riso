@@ -1,0 +1,21 @@
+name: "Số thập phân chính xác: 50 × 1,10 = 55 (máy tính JS chính thức ra 56); 7 × 1,05 = 7,35 → 8"
+observation:
+  game: fgc-2026
+  field: { ext_wildfire: 0 }
+  sides:
+    red:
+      su_wildfire: 50
+      robots:
+        - { climb: ZONE_1, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+    blue:
+      su_wildfire: 7
+      robots:
+        - { climb: CONTACT, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+expect:
+  sides:
+    red: { score: 55, values: { su_points: 55 } }
+    blue: { score: 8, values: { su_points: 8 } }

@@ -1,0 +1,6 @@
+{
+  "games": [
+    { "id": "fgc-2026", "name": "Igniting Innovation", "year": 2026, "series": "FIRST Global Challenge", "simulated": true },
+    { "id": "fgc-2025", "name": "Eco Equilibrium", "year": 2025, "series": "FIRST Global Challenge", "simulated": false }
+  ]
+}
