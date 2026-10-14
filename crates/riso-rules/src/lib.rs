@@ -9,6 +9,8 @@ pub mod model;
 pub mod pack;
 mod rank;
 pub mod schema;
+#[cfg(feature = "wasm")]
+pub mod wasm;
 
 pub use error::{RuleError, ScoreError};
 pub use eval::score;
