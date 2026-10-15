@@ -45,6 +45,18 @@ impl Visitor<'_> for LenientVisitor {
     }
 }
 
+impl InputValue {
+    /// Giá trị nhận được, viết cho người đọc (không lộ `Debug` của Rust).
+    pub fn describe(&self) -> String {
+        match self {
+            InputValue::Bool(b) => b.to_string(),
+            InputValue::Int(n) => n.to_string(),
+            InputValue::Text(s) if s == "null" => "rỗng".into(),
+            InputValue::Text(s) => format!("\"{s}\""),
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for InputValue {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         d.deserialize_any(LenientVisitor)
@@ -64,8 +76,10 @@ pub struct SideObservation {
     pub inputs: BTreeMap<String, InputValue>,
     #[serde(default)]
     pub robots: Vec<BTreeMap<String, InputValue>>,
+    /// Số lần phạm lỗi theo mã lỗi. Đọc khoan dung như ô biên bản: null,
+    /// số âm hay số lẻ không làm hỏng cả biên bản mà thành `OBS_RANGE` có tên ô.
     #[serde(default)]
-    pub fouls: BTreeMap<String, u32>,
+    pub fouls: BTreeMap<String, InputValue>,
     #[serde(default)]
     pub teams: Vec<TeamEntry>,
 }

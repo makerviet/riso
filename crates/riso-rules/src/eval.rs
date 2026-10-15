@@ -42,7 +42,7 @@ fn input_to_dynamic(
             errors.push(ScoreError::new(
                 "OBS_RANGE",
                 path,
-                format!("cần số nguyên ≥ 0, nhận {other:?}"),
+                format!("cần số nguyên ≥ 0, nhận {}", other.describe()),
             ));
             Dynamic::UNIT
         }
@@ -51,7 +51,7 @@ fn input_to_dynamic(
             errors.push(ScoreError::new(
                 "OBS_CHOICE",
                 path,
-                format!("cần true/false, nhận {other:?}"),
+                format!("cần true/false, nhận {}", other.describe()),
             ));
             Dynamic::UNIT
         }
@@ -62,7 +62,11 @@ fn input_to_dynamic(
             errors.push(ScoreError::new(
                 "OBS_CHOICE",
                 path,
-                format!("cần một trong {:?}, nhận {other:?}", def.values),
+                format!(
+                    "cần một trong {}, nhận {}",
+                    def.values.join(", "),
+                    other.describe()
+                ),
             ));
             Dynamic::UNIT
         }
@@ -162,6 +166,7 @@ struct SideState {
     inputs: Vec<(String, Dynamic)>,
     robots: Vec<Vec<(String, Dynamic)>>,
     values: Vec<(String, Dynamic)>,
+    fouls: BTreeMap<String, u32>,
 }
 
 pub fn score(rules: &Rules, obs: &Observation) -> Result<ScoreSheet, Vec<ScoreError>> {
@@ -231,13 +236,26 @@ pub fn score(rules: &Rules, obs: &Observation) -> Result<ScoreSheet, Vec<ScoreEr
                 )
             })
             .collect();
-        for foul in side_obs.fouls.keys() {
+        let mut fouls = BTreeMap::new();
+        for (foul, value) in &side_obs.fouls {
+            let path = format!("sides.{id}.fouls.{foul}");
             if !file.fouls.contains_key(foul) {
                 errors.push(ScoreError::new(
                     "OBS_UNKNOWN",
-                    format!("sides.{id}.fouls.{foul}"),
+                    path,
                     "loại lỗi không có trong luật",
                 ));
+                continue;
+            }
+            match value {
+                InputValue::Int(n) if u32::try_from(*n).is_ok() => {
+                    fouls.insert(foul.clone(), *n as u32);
+                }
+                other => errors.push(ScoreError::new(
+                    "OBS_RANGE",
+                    path,
+                    format!("cần số lần phạm lỗi nguyên ≥ 0, nhận {}", other.describe()),
+                )),
             }
         }
         for (i, team) in side_obs.teams.iter().enumerate() {
@@ -257,6 +275,7 @@ pub fn score(rules: &Rules, obs: &Observation) -> Result<ScoreSheet, Vec<ScoreEr
                 inputs,
                 robots,
                 values: Vec::new(),
+                fouls,
             },
         ));
     }
@@ -373,7 +392,6 @@ pub fn score(rules: &Rules, obs: &Observation) -> Result<ScoreSheet, Vec<ScoreEr
     let mut committed = received.clone();
     let mut foul_lines: BTreeMap<String, Vec<FoulLine>> = BTreeMap::new();
     for (id, state) in &sides {
-        let side_obs = obs.sides.get(id).unwrap_or(&empty);
         let Some(opponent) = file.sides.ids.iter().find(|other| *other != id).cloned() else {
             return Err(vec![ScoreError::new(
                 "EVAL",
@@ -384,7 +402,7 @@ pub fn score(rules: &Rules, obs: &Observation) -> Result<ScoreSheet, Vec<ScoreEr
         let mut scope = make_side_scope(id, state);
         for foul in &plan.fouls {
             let def = &file.fouls[&foul.id];
-            let count = side_obs.fouls.get(&foul.id).copied().unwrap_or(0);
+            let count = state.fouls.get(&foul.id).copied().unwrap_or(0);
             let each = to_dec(
                 &eval_node(
                     rules,
@@ -568,7 +586,12 @@ impl Rules {
                             robots: (0..self.file.sides.teams)
                                 .map(|_| blank(&self.file.inputs.robot))
                                 .collect(),
-                            fouls: BTreeMap::new(),
+                            fouls: self
+                                .file
+                                .fouls
+                                .keys()
+                                .map(|id| (id.clone(), InputValue::Int(0)))
+                                .collect(),
                             teams: Vec::new(),
                         },
                     )
@@ -639,7 +662,7 @@ mod tests {
             .get_mut("red")
             .unwrap()
             .fouls
-            .insert("minor".into(), 2);
+            .insert("minor".into(), InputValue::Int(2));
         let sheet = score(&rules, &o).unwrap();
         assert_eq!(sheet.sides["blue"].fouls_received, "6");
         assert_eq!(sheet.sides["blue"].score, 12);
@@ -744,7 +767,7 @@ mod tests {
             .get_mut("red")
             .unwrap()
             .fouls
-            .insert("huge".into(), 1);
+            .insert("huge".into(), InputValue::Int(1));
         assert_eq!(
             codes(&bad_foul),
             vec![("OBS_UNKNOWN", "sides.red.fouls.huge".to_string())]
@@ -787,6 +810,71 @@ mod tests {
     }
 
     #[test]
+    fn blank_observation_has_zero_for_every_foul() {
+        let rules = load(BASE, &NoParents).unwrap();
+        let blank = rules.blank_observation();
+        for side in ["red", "blue"] {
+            assert_eq!(
+                blank.sides[side].fouls,
+                BTreeMap::from([("minor".to_string(), InputValue::Int(0))]),
+                "{side}"
+            );
+        }
+        let json = serde_json::to_value(&blank).unwrap();
+        assert_eq!(json["sides"]["red"]["fouls"]["minor"], 0);
+    }
+
+    #[test]
+    fn invalid_foul_counts_are_named_range_errors() {
+        let rules = load(BASE, &NoParents).unwrap();
+        for bad in ["null", "-1", "2.5", "\"x\""] {
+            let json = format!(
+                r#"{{"game":"base-game","sides":{{"red":{{"balls":1,"fouls":{{"minor":{bad}}},"robots":[{{"parked":false}},{{"parked":false}}]}},"blue":{{"balls":1,"robots":[{{"parked":false}},{{"parked":false}}]}}}}}}"#
+            );
+            let o: Observation = serde_json::from_str(&json).unwrap();
+            let errors = score(&rules, &o).unwrap_err();
+            assert_eq!(
+                errors
+                    .iter()
+                    .map(|e| (e.code, e.path.as_str()))
+                    .collect::<Vec<_>>(),
+                vec![("OBS_RANGE", "sides.red.fouls.minor")],
+                "{bad}"
+            );
+        }
+    }
+
+    #[test]
+    fn error_messages_describe_values_for_humans() {
+        let rules = load(BASE, &NoParents).unwrap();
+        let message = |v: InputValue| {
+            let mut o = obs(1, 1, [false, false], [false, false]);
+            o.sides
+                .get_mut("red")
+                .unwrap()
+                .inputs
+                .insert("balls".into(), v);
+            score(&rules, &o).unwrap_err()[0].message.clone()
+        };
+        assert_eq!(
+            message(InputValue::Text("2.5".into())),
+            "cần số nguyên ≥ 0, nhận \"2.5\""
+        );
+        assert_eq!(
+            message(InputValue::Text("null".into())),
+            "cần số nguyên ≥ 0, nhận rỗng"
+        );
+        assert_eq!(
+            message(InputValue::Bool(true)),
+            "cần số nguyên ≥ 0, nhận true"
+        );
+        let mut o = obs(1, 1, [false, false], [false, false]);
+        o.sides.get_mut("red").unwrap().robots[0].insert("parked".into(), InputValue::Int(3));
+        let errors = score(&rules, &o).unwrap_err();
+        assert_eq!(errors[0].message, "cần true/false, nhận 3");
+    }
+
+    #[test]
     fn rounding_applies_to_final_score() {
         let yaml = BASE.replace("\"balls * ball_points\"", "\"balls * 0.3\"");
         let rules = load(&yaml, &NoParents).unwrap();
@@ -804,7 +892,7 @@ mod tests {
             .get_mut("red")
             .unwrap()
             .fouls
-            .insert("minor".into(), 4_000_000);
+            .insert("minor".into(), InputValue::Int(4_000_000));
         let errors = score(&rules, &o).unwrap_err();
         assert_eq!(errors[0].code, "EVAL");
         assert!(
@@ -849,7 +937,7 @@ mod tests {
             .get_mut("red")
             .unwrap()
             .fouls
-            .insert("minor".into(), 2);
+            .insert("minor".into(), InputValue::Int(2));
         let sheet = score(&rules, &o).unwrap();
         assert_eq!(sheet.sides["red"].fouls_committed, "6");
         assert_eq!(sheet.sides["red"].fouls_received, "0");
