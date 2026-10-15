@@ -7,8 +7,9 @@ use tokio::sync::{RwLock, broadcast, mpsc};
 use tracing::info;
 
 use super::match_runtime::{MatchRuntime, PlayerSnapshot, ScoreState};
-use super::pack_loader::{ArenaConfig, GamePackMetadata};
+use super::pack_loader::{ArenaConfig, FieldTrigger, GamePackMetadata};
 use super::rhai_engine::RhaiEngine;
+use super::scoring_bridge::{ObservationSource, build_observation};
 use super::sphere_runtime::{BallDebugFlag, SphereRuntime, StepMetrics, TransferDebug};
 
 pub struct MatchRegistry {
@@ -407,12 +408,6 @@ impl RuntimeBackend {
         }
     }
 
-    fn set_scoring_enabled(&mut self, enabled: bool) {
-        if let Self::Sphere(runtime) = self {
-            runtime.set_scoring_enabled(enabled);
-        }
-    }
-
     fn disable_player_controls(&mut self) {
         match self {
             Self::Rapier(runtime) => runtime.disable_player_controls(),
@@ -442,34 +437,38 @@ impl RuntimeBackend {
         }
     }
 
-    /// Accumulate a single scored outcome into the runtime score ledger.
-    fn apply_score(&mut self, team: &str, category: &str, points: i32) {
-        let score = match self {
-            Self::Rapier(runtime) => &mut runtime.score_state,
-            Self::Sphere(runtime) => &mut runtime.score_state,
-        };
-        match team {
-            "blue" => {
-                score.blue_score += points;
-                if category == "SU" {
-                    score.blue_su_score += points;
-                }
-            }
-            "red" => {
-                score.red_score += points;
-                if category == "SU" {
-                    score.red_su_score += points;
-                }
-            }
-            _ => score.global_score += points,
-        }
-        *score.breakdown.entry(category.to_string()).or_insert(0) += points;
-    }
-
     fn score_state(&self) -> ScoreState {
         match self {
             Self::Rapier(runtime) => runtime.score_state.clone(),
             Self::Sphere(runtime) => runtime.score_state.clone(),
+        }
+    }
+
+    fn set_score(&mut self, score: ScoreState) {
+        match self {
+            Self::Rapier(runtime) => runtime.score_state = score,
+            Self::Sphere(runtime) => runtime.score_state = score,
+        }
+    }
+
+    /// Nguồn đo cho `observe.yaml`. Runtime Rapier cũ không có vùng tính điểm.
+    fn observation_source<'a>(
+        &'a self,
+        pack: &'a GamePackMetadata,
+    ) -> Option<SphereObservation<'a>> {
+        match self {
+            Self::Sphere(runtime) => Some(SphereObservation {
+                runtime,
+                triggers: &pack.field_definition.triggers,
+                object_kind: pack
+                    .manifest
+                    .objects
+                    .first()
+                    .and_then(|object| object.get("id"))
+                    .and_then(serde_json::Value::as_str)
+                    .map(str::to_string),
+            }),
+            Self::Rapier(_) => None,
         }
     }
 
@@ -501,19 +500,6 @@ impl RuntimeBackend {
         match self {
             Self::Rapier(runtime) => runtime.player_snapshots(),
             Self::Sphere(runtime) => runtime.player_snapshots_with_brace_states(triggers),
-        }
-    }
-
-    fn brace_multipliers(&self, triggers: &[super::pack_loader::FieldTrigger]) -> (f32, f32) {
-        match self {
-            Self::Rapier(_) => (1.0, 1.0),
-            Self::Sphere(runtime) => runtime.brace_multipliers(triggers),
-        }
-    }
-
-    fn apply_endgame_brace_multipliers(&mut self, multipliers: (f32, f32)) {
-        if let Self::Sphere(runtime) = self {
-            runtime.apply_endgame_brace_multipliers(multipliers.0, multipliers.1);
         }
     }
 
@@ -579,6 +565,133 @@ impl RuntimeBackend {
             Self::Sphere(runtime) => runtime.ball_contact_collider_ids(),
         }
     }
+}
+
+struct SphereObservation<'a> {
+    runtime: &'a SphereRuntime,
+    triggers: &'a [FieldTrigger],
+    object_kind: Option<String>,
+}
+
+impl ObservationSource for SphereObservation<'_> {
+    fn object_kind(&self) -> Option<String> {
+        self.object_kind.clone()
+    }
+
+    fn count_in_target(&self, target: &str, released_by: Option<&str>) -> Option<i64> {
+        self.runtime.count_in_target(target, released_by)
+    }
+
+    fn robot_brace_labels(&self) -> Vec<(String, String)> {
+        self.runtime.robot_brace_labels(self.triggers)
+    }
+}
+
+type ScoredObservation = (riso_rules::Observation, Arc<riso_rules::ScoreSheet>);
+
+/// Tính điểm từ trạng thái mô phỏng hiện tại bằng `rules.yaml`. `locked` là
+/// trạng thái leo chốt lúc còi kết thúc. Lỗi thì giữ bảng điểm cũ và gắn cờ.
+fn rescore(
+    runtime: &mut RuntimeBackend,
+    pack: &GamePackMetadata,
+    locked: Option<&[(String, String)]>,
+) -> Option<ScoredObservation> {
+    let (rules, observe) = (pack.rules.as_ref()?, pack.observe.as_ref()?);
+    let observation = {
+        let source = runtime.observation_source(pack)?;
+        build_observation(observe, rules, &source, locked)
+    };
+    match riso_rules::score(rules, &observation) {
+        Ok(sheet) => {
+            let sheet = Arc::new(sheet);
+            runtime.set_score(ScoreState::from_sheet(sheet.clone()));
+            Some((observation, sheet))
+        }
+        Err(errors) => {
+            let message = errors
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join("; ");
+            tracing::error!(%message, "Tính điểm thất bại; giữ bảng điểm gần nhất");
+            let mut state = runtime.score_state();
+            state.scoring_error = Some(message);
+            runtime.set_score(state);
+            None
+        }
+    }
+}
+
+/// Tính lại điểm mỗi 30 tick (0,5 giây ở 60 Hz).
+const RESCORE_EVERY_TICKS: u64 = 30;
+
+/// Trạng thái tính điểm của một trận trong luồng mô phỏng.
+#[derive(Default)]
+struct MatchScoring {
+    /// Trạng thái leo chốt tại tiếng còi (spec mục 7.2 bước 3).
+    locked_robots: Option<Vec<(String, String)>>,
+    final_observation: Option<ScoredObservation>,
+}
+
+impl MatchScoring {
+    /// Gọi ở mọi tick sau tiếng còi; chỉ lần đầu có tác dụng.
+    fn lock_at_buzzer(&mut self, runtime: &RuntimeBackend, pack: &GamePackMetadata) {
+        if self.locked_robots.is_none() {
+            self.locked_robots = Some(
+                runtime
+                    .observation_source(pack)
+                    .map(|source| source.robot_brace_labels())
+                    .unwrap_or_default(),
+            );
+        }
+    }
+
+    /// Tính điểm sống khi trận đang chạy hoặc đang lắng sau còi.
+    fn periodic(&mut self, runtime: &mut RuntimeBackend, pack: &GamePackMetadata, tick: u64) {
+        if tick % RESCORE_EVERY_TICKS == 0 {
+            rescore(runtime, pack, self.locked_robots.as_deref());
+        }
+    }
+
+    /// Biên bản cuối, tính một lần với trạng thái leo đã chốt. Tự chốt nếu
+    /// chưa chốt (vòng lặp bị trễ, nhảy qua cả giai đoạn lắng sau còi).
+    fn finalize(
+        &mut self,
+        runtime: &mut RuntimeBackend,
+        pack: &GamePackMetadata,
+    ) -> Option<&ScoredObservation> {
+        self.lock_at_buzzer(runtime, pack);
+        if self.final_observation.is_none() {
+            self.final_observation = rescore(runtime, pack, self.locked_robots.as_deref());
+        }
+        self.final_observation.as_ref()
+    }
+}
+
+/// `result` gửi về API khi trận kết thúc: điểm tổng (giữ các khoá cũ) kèm
+/// biên bản cuối, bảng điểm đầy đủ và phiên bản luật.
+fn completion_result(
+    score: &ScoreState,
+    scored: Option<&ScoredObservation>,
+    pack: &GamePackMetadata,
+) -> serde_json::Value {
+    let (observation, sheet) = match scored {
+        Some((observation, sheet)) => (
+            serde_json::to_value(observation).unwrap_or_default(),
+            serde_json::to_value(sheet.as_ref()).unwrap_or_default(),
+        ),
+        None => (serde_json::Value::Null, serde_json::Value::Null),
+    };
+    serde_json::json!({
+        "redScore": score.red_score,
+        "blueScore": score.blue_score,
+        "globalScore": score.global_score,
+        "breakdown": score.breakdown,
+        "observation": observation,
+        "scoreSheet": sheet,
+        "rulesVersion": pack.rules.as_ref().map(|rules| rules.file.version.clone()),
+        "scoringError": score.scoring_error,
+    })
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -960,6 +1073,8 @@ impl MatchRegistry {
                 let mut process_sampler = ProcessSampler::default();
                 let mut process_metrics = ProcessMetrics::default();
                 let mut publish_count = 0u64;
+                // Bảng điểm đã gửi gần nhất (con trỏ Arc + lỗi) để chỉ gửi section 14 khi đổi.
+                let mut sent_sheet: (usize, Option<String>) = (0, None);
                 while !publisher_shutdown.load(Ordering::Relaxed) {
                     publish_count += 1;
                     let now = Instant::now();
@@ -989,11 +1104,24 @@ impl MatchRegistry {
                     if let Some(state) = state {
                         let include_physics = publish_count % 10 == 1;
                         let include_debug = publisher_debug_subscribers.load(Ordering::Relaxed) > 0;
+                        let sheet_key = (
+                            state
+                                .score
+                                .sheet
+                                .as_ref()
+                                .map_or(0, |sheet| std::sync::Arc::as_ptr(sheet) as usize),
+                            state.score.scoring_error.clone(),
+                        );
+                        let include_score_sheet = include_physics || sheet_key != sent_sheet;
+                        if include_score_sheet {
+                            sent_sheet = sheet_key;
+                        }
                         let _ = publisher_tx.send(Bytes::from(encode_state(
                             &state,
                             process_metrics,
                             include_physics,
                             include_debug,
+                            include_score_sheet,
                         )));
                     }
                 }
@@ -1005,16 +1133,6 @@ impl MatchRegistry {
             .name(format!("match-{match_id}"))
             .spawn(move || {
                 let mut runtime = RuntimeBackend::new(match_id.clone(), &pack, bootstrap.match_seed);
-                let mut rules = RhaiEngine::new();
-                for script in pack.manifest.scripts.values() {
-                    let Some(source) = pack.script_sources.get(script) else {
-                        tracing::error!(path = %script, "API runtime snapshot is missing a rule script in match thread");
-                        continue;
-                    };
-                    if !rules.load_source(script, source) {
-                        tracing::error!(path = %script, "Unable to compile API rule script into match thread");
-                    }
-                }
                 let physics = PhysicsSync::from(&pack.arena);
                 let tick_duration = Duration::from_secs_f64(1.0 / 60.0);
                 let tick_budget_ms = tick_duration.as_secs_f64() * 1_000.0;
@@ -1034,8 +1152,7 @@ impl MatchRegistry {
                 let mut tick = 0_u64;
                 let mut event_sequence = 0_u64;
                 let mut recent_semantic_events = VecDeque::<String>::with_capacity(16);
-                let mut brace_score_applied = false;
-                let mut endgame_brace_multipliers = None;
+                let mut scoring = MatchScoring::default();
 
                 while !simulation_shutdown.load(Ordering::Relaxed) {
                     let now = Instant::now();
@@ -1088,10 +1205,9 @@ impl MatchRegistry {
                                 live_phase_entered = false;
                                 practice_continue = false;
                                 controls_disabled = false;
-                                brace_score_applied = false;
-                                endgame_brace_multipliers = None;
                                 event_sequence = 0;
                                 recent_semantic_events.clear();
+                                scoring = MatchScoring::default();
                                 if let Some(reports) = &report_tx { let _ = reports.send(MatchReport::Event(MatchEventReport {
                                     match_id: match_id.clone(), event_id: format!("{match_id}:admin-reset:{tick}"), tick,
                                     kind: "match.admin_reset".to_string(), payload: serde_json::json!({ "startsInSeconds": 5 }),
@@ -1121,47 +1237,31 @@ impl MatchRegistry {
                     }
                     let match_running = live_phase_entered && clock_now < match_ends;
                     let settling = live_phase_entered && clock_now >= match_ends && clock_now < match_finalizes;
-                    if settling && endgame_brace_multipliers.is_none() {
-                        // Lock the brace result at the final buzzer, then let
-                        // balls keep settling and scoring until completion.
-                        endgame_brace_multipliers =
-                            Some(runtime.brace_multipliers(&pack.field_definition.triggers));
-                    }
                     let scoring_active = match_running || settling;
+                    if settling {
+                        scoring.lock_at_buzzer(&runtime, &pack);
+                    }
                     let physics_started = Instant::now();
                     if scoring_active || practice_continue {
-                        runtime.set_scoring_enabled(scoring_active);
                         runtime.step(&pack.arena, 1.0 / 60.0);
                     }
                     for event in runtime.drain_semantic_events() {
                         event_sequence += 1;
-                        let mut label = format!("{} {} ← {}", event.kind, event.target_id, event.entity_id);
+                        let label = format!("{} {} ← {}", event.kind, event.target_id, event.entity_id);
                         if let Some(reports) = &report_tx { let _ = reports.send(MatchReport::Event(MatchEventReport {
                             match_id: match_id.clone(), event_id: format!("{match_id}:{tick}:{event_sequence}"), tick,
                             kind: format!("semantic.{}", event.kind), payload: serde_json::json!({ "targetId": event.target_id, "entityId": event.entity_id }), game_pack_version: pack.manifest.version.clone(),
                         })); }
-                        if scoring_active {
-                            let outcomes = rules.on_trigger_enter(&event.target_id, &event.entity_id);
-                            for outcome in outcomes {
-                                event_sequence += 1;
-                                label.push_str(&format!(" · {} {}/{} +{}", outcome.kind, outcome.team, outcome.category, outcome.points));
-                                // Native scoring: the authored rule's outcome
-                                // is the source of truth for team, category and
-                                // points, so tweaking scoring.rhai rebalances a
-                                // match without a rebuild.
-                                runtime.apply_score(&outcome.team, &outcome.category, outcome.points as i32);
-                                if let Some(reports) = &report_tx { let _ = reports.send(MatchReport::Event(MatchEventReport {
-                                    match_id: match_id.clone(), event_id: format!("{match_id}:{tick}:{event_sequence}"), tick, kind: "score.awarded".to_string(),
-                                    payload: serde_json::json!({ "team": outcome.team, "category": outcome.category, "points": outcome.points }), game_pack_version: pack.manifest.version.clone(),
-                                })); }
-                            }
-                        }
                         recent_semantic_events.push_back(label);
                         while recent_semantic_events.len() > 16 {
                             recent_semantic_events.pop_front();
                         }
                     }
                     let physics_tick_ms = physics_started.elapsed().as_secs_f64() * 1_000.0;
+                    // Tính điểm ngoài thời gian đo tick vật lý.
+                    if scoring_active {
+                        scoring.periodic(&mut runtime, &pack, tick);
+                    }
                     let physics_load_percent = physics_tick_ms / tick_budget_ms * 100.0;
                     tick += 1;
                     ticks_in_tps_window += 1;
@@ -1253,23 +1353,13 @@ impl MatchRegistry {
                             *slot = Some(Arc::new(state));
                         }
                     }
-                    if live_phase_entered && !practice_continue && clock_now >= match_finalizes && !brace_score_applied {
-                        runtime.apply_endgame_brace_multipliers(
-                            endgame_brace_multipliers.unwrap_or((1.0, 1.0)),
-                        );
-                        brace_score_applied = true;
-                        recent_semantic_events.push_back("match_end · brace multipliers applied".into());
-                        while recent_semantic_events.len() > 16 {
-                            recent_semantic_events.pop_front();
-                        }
-                        continue;
-                    }
                     if live_phase_entered && !practice_continue && clock_now >= match_finalizes {
+                        let final_observation = scoring.finalize(&mut runtime, &pack);
                         let score = runtime.score_state();
                         if let Some(reports) = &report_tx { let _ = reports.send(MatchReport::Completion(MatchCompletionReport {
                             match_id: match_id.clone(), completion_id: format!("{match_id}:complete:{tick}:finished"), tick,
                             reason: "finished".to_string(), game_pack_version: pack.manifest.version.clone(),
-                            result: serde_json::json!({ "redScore": score.red_score, "blueScore": score.blue_score, "globalScore": score.global_score, "breakdown": score.breakdown }),
+                            result: completion_result(&score, final_observation, &pack),
                         })); }
                         simulation_shutdown.store(true, Ordering::Relaxed);
                     }
@@ -1382,6 +1472,11 @@ fn put_string(output: &mut Vec<u8>, value: &str) {
     let bytes = value.as_bytes();
     put_u16(output, bytes.len().min(u16::MAX as usize) as u16);
     output.extend_from_slice(&bytes[..bytes.len().min(u16::MAX as usize)]);
+}
+/// Chuỗi dài (JSON bảng điểm): tiền tố độ dài u32 thay vì u16.
+fn put_long_string(output: &mut Vec<u8>, value: &str) {
+    put_u32(output, value.len() as u32);
+    output.extend_from_slice(value.as_bytes());
 }
 
 #[cfg(test)]

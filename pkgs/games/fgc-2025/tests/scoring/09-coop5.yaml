@@ -1,0 +1,14 @@
+name: "5 robot treo → 15"
+observation:
+  game: fgc-2025
+  field: { barriers_mitigated: 0, barriers_in_ecosystems: 0, bio_freshwater: 0, bio_marine: 0, bio_terrestrial: 0 }
+  sides:
+    red:
+      robots: [ { rope: LEVEL_2 }, { rope: LEVEL_2 }, { rope: LEVEL_2 } ]
+    blue:
+      robots: [ { rope: LEVEL_2 }, { rope: LEVEL_2 }, { rope: NONE } ]
+expect:
+  field: { distribution: 1, coop: 15 }
+  sides:
+    red: { score: 15, values: { protection: 1.75 } }
+    blue: { score: 15, values: { protection: 1.5 } }

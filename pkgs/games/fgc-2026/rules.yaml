@@ -1,0 +1,53 @@
+schema: riso.rules/v1
+game: fgc-2026
+name: Igniting Innovation
+version: 1.0.0
+source: "FGC 2026 Game Manual §3.6, §6.3"
+sides: { ids: [red, blue], teams: 3 }
+rounding: ceil
+inputs:
+  field:
+    ext_wildfire: { type: count, max: 500, label: "WILDFIRE trong Extinguisher" }
+  side:
+    su_wildfire:  { type: count, max: 500, label: "WILDFIRE trong Suppression Unit" }
+  robot:
+    climb: { type: choice, values: [NONE, CONTACT, ZONE_1, ZONE_2, ZONE_3], label: "Vị trí leo (kể cả được nâng gián tiếp)" }
+    lifted_by_partner: { type: bool, label: "Được robot đồng đội nâng" }
+constants:
+  climb_increment: { NONE: 0, CONTACT: 0.05, ZONE_1: 0.10, ZONE_2: 0.20, ZONE_3: 0.30 }
+  coop_bonus: { 4: 10, 5: 25, 6: 40 }
+values:
+  robot:
+    climb_inc: "lookup(climb, climb_increment)"
+    in_zone3:  "climb == \"ZONE_3\""
+  field:
+    ext_points: { expr: "ext_wildfire", label: "Extinguisher" }
+    knockdown:  { expr: "if ext_wildfire > red.su_wildfire && ext_wildfire > blue.su_wildfire { 10 } else { 0 }", label: "Knockdown" }
+    coop:       { expr: "steps(count(all_robots.in_zone3), coop_bonus)", label: "Coopertition" }
+  side:
+    climb_mult:  { expr: "1 + sum(robots.climb_inc)", label: "Hệ số leo" }
+    su_points:   { expr: "ceil(su_wildfire * climb_mult)", label: "Suppression Unit × hệ số" }
+    partner:     { expr: "25 * count(robots.lifted_by_partner)", label: "Partner climb" }
+    pre_penalty: "su_points + partner + field.ext_points + field.knockdown + field.coop"
+fouls:
+  minor: { label: "Thẻ vàng + lỗi nhẹ (5%)",  points: "0.05 * pre_penalty", goes_to: opponent }
+  major: { label: "Thẻ vàng + lỗi nặng (10%)", points: "0.10 * pre_penalty", goes_to: opponent }
+cards: { white: team_zero, yellow: none, red: team_zero }
+score: "pre_penalty + fouls_received"
+ranking:
+  aggregate: average
+  drop_lowest: { count: 1, not_if: [red] }
+  tiebreakers:
+    - { label: "Trận cao nhất", expr: "max(matches.team_score)" }
+    - { label: "Tổng điểm Suppression Unit", expr: "sum(matches.su_points)" }
+  final_tiebreak: draw
+open_questions:
+  - id: knockdown
+    used: "Extinguisher > từng Suppression Unit (bằng nhau thì không)"
+    source: "Máy tính chính thức: wf_e > wf_r && wf_e > wf_b; manual §3.4 ghi 'both of the two'"
+  - id: su_round_step
+    used: "Làm tròn lên ngay ở su_points"
+    source: "Máy tính chính thức: Math.ceil(suppWF*(1+multInc))"
+  - id: tiebreak_2
+    used: "Tổng su_points (đã nhân hệ số) của các trận được tính"
+    source: "Manual §6.3 ghi 'SUPPRESSION UNIT points'; máy tính chính thức ghi head-to-head → theo manual"

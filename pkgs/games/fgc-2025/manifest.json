@@ -1,0 +1,7 @@
+{
+  "id": "fgc-2025",
+  "name": "Eco Equilibrium",
+  "version": "1.0.0",
+  "engineVersion": ">=0.1.0",
+  "rules": { "scoring": "rules.yaml" }
+}

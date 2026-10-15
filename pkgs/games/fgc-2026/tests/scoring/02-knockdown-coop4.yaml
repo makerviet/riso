@@ -1,0 +1,22 @@
+name: "Knockdown + Coopertition 4 robot Zone 3"
+observation:
+  game: fgc-2026
+  field: { ext_wildfire: 150 }
+  sides:
+    red:
+      su_wildfire: 120
+      robots:
+        - { climb: ZONE_3, lifted_by_partner: false }
+        - { climb: ZONE_3, lifted_by_partner: false }
+        - { climb: ZONE_3, lifted_by_partner: false }
+    blue:
+      su_wildfire: 100
+      robots:
+        - { climb: ZONE_3, lifted_by_partner: false }
+        - { climb: ZONE_2, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+expect:
+  field: { ext_points: 150, knockdown: 10, coop: 10 }
+  sides:
+    red: { score: 398, values: { su_points: 228 } }
+    blue: { score: 320, values: { su_points: 150 } }

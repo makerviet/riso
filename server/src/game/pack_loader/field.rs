@@ -94,9 +94,7 @@ pub(super) fn load_field_definition(
                 id: target.id.clone(),
                 kind: target.kind.clone(),
                 alliance: target.alliance.clone(),
-                points: target.points,
                 enabled: target.enabled,
-                requires_robot_outtake: target.requires_robot_outtake,
                 min,
                 max,
             })

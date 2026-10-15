@@ -149,12 +149,32 @@ export interface MatchSnapshot {
 		global: number;
 		breakdown: Record<string, number>;
 	};
+	/** Section 14; null when this frame did not carry the sheet (keep the previous one). */
+	scoreSheet: ScoreSheetSection | null;
 	transferDebug: TransferDebugEntry[];
 	ballDebug: Uint8Array;
 	/** Authored robot collider ids each active ball is touching, indexed like `ballDebug`. */
 	ballContacts: string[][];
 	inputAcknowledgements: InputAcknowledgement[];
 }
+
+export type LineItem = {
+	name: string;
+	label: string | null;
+	label_en: string | null;
+	value: string;
+};
+export type ScoreSheetJson = {
+	game: string;
+	rules_version: string;
+	field: LineItem[];
+	sides: Record<
+		string,
+		{ values: LineItem[]; score: number; raw_score: string; fouls_received: string }
+	>;
+	not_simulated: string[];
+};
+export type ScoreSheetSection = { sheet: ScoreSheetJson | null; scoringError: string | null };
 
 const decoder = new TextDecoder();
 
@@ -285,6 +305,7 @@ export function decodeMatchSnapshot(buffer: ArrayBuffer): MatchSnapshot {
 		velocities: new Float32Array(),
 		semanticEvents: [],
 		score: { blue: 0, red: 0, global: 0, breakdown: {} },
+		scoreSheet: null,
 		transferDebug: [],
 		ballDebug: new Uint8Array(),
 		ballContacts: [],
@@ -651,6 +672,17 @@ export function decodeMatchSnapshot(buffer: ArrayBuffer): MatchSnapshot {
 					breakdown[category] = section.i32();
 				}
 				snapshot.score = { blue, red, global, breakdown };
+				break;
+			}
+			case 14: {
+				const length = section.u32();
+				const bytes = new Uint8Array(
+					view.buffer,
+					view.byteOffset + section.offset,
+					Math.min(length, sectionEnd - section.offset)
+				);
+				section.offset += bytes.length;
+				snapshot.scoreSheet = JSON.parse(decoder.decode(bytes)) as ScoreSheetSection;
 				break;
 			}
 			case 11: {

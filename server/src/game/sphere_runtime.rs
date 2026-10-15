@@ -274,8 +274,6 @@ pub struct SphereRuntime {
     field_collider_index: ColliderSpatialIndex,
     field_anchors: BTreeMap<String, Vec3>,
     scoring_targets: Vec<FieldScoringTarget>,
-    scored_target_by_ball: Vec<Option<usize>>,
-    scoring_enabled: bool,
     semantic_events: Vec<SemanticEvent>,
     intake_candidates: Vec<(f32, usize)>,
     robot_definition: Option<RobotDefinition>,
@@ -322,8 +320,6 @@ impl SphereRuntime {
             field_collider_index: ColliderSpatialIndex::default(),
             field_anchors: BTreeMap::new(),
             scoring_targets: Vec::new(),
-            scored_target_by_ball: Vec::new(),
-            scoring_enabled: false,
             semantic_events: Vec::new(),
             intake_candidates: Vec::with_capacity(16),
             robot_definition: None,
@@ -348,10 +344,6 @@ impl SphereRuntime {
         }
         self.context.phase = MatchPhase::Teleop;
         self.ball_release_elapsed = Some(0.0);
-    }
-
-    pub fn set_scoring_enabled(&mut self, enabled: bool) {
-        self.scoring_enabled = enabled;
     }
 
     pub fn create_field_arena(&mut self, arena: &ArenaConfig, field: &FieldDefinition) {
@@ -398,7 +390,6 @@ impl SphereRuntime {
                 last_outtake_alliance: None,
             });
         }
-        self.scored_target_by_ball = vec![None; self.balls.len()];
         self.semantic_events.clear();
     }
 
@@ -724,7 +715,6 @@ impl SphereRuntime {
         self.context.phase = MatchPhase::PreMatch;
         self.context.clock = 0.0;
         self.score_state = ScoreState::default();
-        self.scoring_enabled = false;
         self.ball_release_elapsed = None;
         self.semantic_events.clear();
         self.transfer_debug.clear();
@@ -748,7 +738,6 @@ impl SphereRuntime {
             ball.owner = None;
             ball.last_outtake_alliance = None;
         }
-        self.scored_target_by_ball.fill(None);
 
         let robot_center_y = self.robot_center_y(arena);
         for (index, player) in self.players.values_mut().enumerate() {
@@ -801,7 +790,6 @@ impl SphereRuntime {
     pub fn clear_balls(&mut self) {
         self.ball_release_elapsed = None;
         self.semantic_events.clear();
-        self.scored_target_by_ball.fill(None);
         for ball in &mut self.balls {
             ball.active = false;
             ball.owner = None;
@@ -964,9 +952,6 @@ impl SphereRuntime {
                 .iter()
                 .filter(|ball| ball.active && !ball.sleeping)
                 .count();
-            if self.scoring_enabled {
-                self.reconcile_scoring();
-            }
             return;
         }
         let integrate_started = Instant::now();
@@ -1007,9 +992,6 @@ impl SphereRuntime {
             .iter()
             .filter(|ball| ball.active && !ball.sleeping)
             .count();
-        if self.scoring_enabled {
-            self.reconcile_scoring();
-        }
     }
 
     fn integrate(&mut self, arena: &ArenaConfig, dt: f32) {
@@ -2588,64 +2570,6 @@ impl SphereRuntime {
                 }
             })
             .collect()
-    }
-
-    pub fn brace_multipliers(&self, triggers: &[FieldTrigger]) -> (f32, f32) {
-        let ground_offset_y = self
-            .arena
-            .as_ref()
-            .map(|arena| -arena.robot.height_m * 0.5)
-            .unwrap_or_default();
-        let mut blue_multiplier = 1.0;
-        let mut red_multiplier = 1.0;
-        for player in self.players.values() {
-            let brace = brace::brace_state_for_player(
-                player,
-                self.robot_definition.as_ref(),
-                ground_offset_y,
-                &self.field_colliders,
-                triggers,
-            );
-            if player.team_name.eq_ignore_ascii_case("blue") {
-                blue_multiplier += brace.multiplier - 1.0;
-            } else if player.team_name.eq_ignore_ascii_case("red") {
-                red_multiplier += brace.multiplier - 1.0;
-            }
-        }
-        (blue_multiplier, red_multiplier)
-    }
-
-    pub fn apply_endgame_brace_multipliers(&mut self, blue_multiplier: f32, red_multiplier: f32) {
-        self.apply_su_multiplier("blue", blue_multiplier);
-        self.apply_su_multiplier("red", red_multiplier);
-    }
-
-    fn apply_su_multiplier(&mut self, alliance: &str, multiplier: f32) {
-        let su_score = match alliance {
-            "blue" => self.score_state.blue_su_score,
-            "red" => self.score_state.red_su_score,
-            _ => return,
-        };
-        let adjusted = (su_score as f32 * multiplier).round() as i32;
-        let delta = adjusted - su_score;
-        match alliance {
-            "blue" => {
-                self.score_state.blue_su_score = adjusted;
-                self.score_state.blue_score += delta;
-            }
-            "red" => {
-                self.score_state.red_su_score = adjusted;
-                self.score_state.red_score += delta;
-            }
-            _ => unreachable!(),
-        }
-        if delta != 0 {
-            *self
-                .score_state
-                .breakdown
-                .entry(format!("{alliance}_brace_multiplier"))
-                .or_insert(0) += delta;
-        }
     }
 
     pub fn field_object_positions(&self) -> ObjectPositionsSync {

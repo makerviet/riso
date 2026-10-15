@@ -1,0 +1,23 @@
+name: "Lỗi nhẹ 5% / nặng 10% điểm trước phạt, cộng cho đối thủ, làm tròn lên"
+observation:
+  game: fgc-2026
+  field: { ext_wildfire: 0 }
+  sides:
+    red:
+      su_wildfire: 100
+      fouls: { minor: 1 }
+      robots:
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+    blue:
+      su_wildfire: 33
+      fouls: { major: 1 }
+      robots:
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+expect:
+  sides:
+    red: { score: 104, fouls_received: 3.3 }
+    blue: { score: 38, fouls_received: 5 }

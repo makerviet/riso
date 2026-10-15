@@ -33,6 +33,7 @@ type Manifest = {
       area: { widthM?: number; heightM?: number; semanticBounds?: string }
     }>
   }
+  rules?: { scoring: string; observe?: string }
   objects: unknown[]
   phases: unknown[]
   scripts: Record<string, string>
@@ -293,8 +294,29 @@ app.get('/:id/runtime', async (c) => {
         return [id, { physics, semantics }] as const
       })),
     ])
+    const rules: Record<string, string> = {}
+    let observe: string | null = null
+    if (manifest.rules?.scoring) {
+      let currentYaml = await readPackText(c, manifest.rules.scoring)
+      rules[PACK_ID] = currentYaml
+      for (let depth = 0; depth < 4; depth += 1) {
+        const parent = /^extends:\s*([\w-]+)\s*$/m.exec(currentYaml)?.[1]
+        if (!parent || rules[parent]) break
+        // Parent rules live in a sibling pack directory, outside packPath's prefix.
+        const url = new URL(c.req.url)
+        url.pathname = `/${parent}/rules.yaml`
+        url.search = ''
+        const response = await c.env.PACK_ASSETS.fetch(new Request(url))
+        if (!response.ok) break
+        currentYaml = await response.text()
+        rules[parent] = currentYaml
+      }
+      if (manifest.rules.observe) observe = await readPackText(c, manifest.rules.observe)
+    }
     return jsonSuccess(c, {
       manifest,
+      rules,
+      observe,
       fieldPhysics,
       fieldSemantics,
       scripts: Object.fromEntries(scripts),

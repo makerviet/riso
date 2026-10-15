@@ -365,7 +365,51 @@ fn starter_bot_can_drive_from_an_authored_spawn_surface() {
 }
 
 #[test]
-fn scores_only_matching_alliance_outtakes_and_reverses_on_exit() {
+fn robot_brace_labels_report_none_contact_and_zone_per_alliance() {
+    let pack = crate::game::pack_loader::PackLoader::new("0.1.0")
+        .load_pack("../pkgs/games/fgc-2026/manifest.json")
+        .unwrap();
+    let arena = arena();
+    let mut runtime = SphereRuntime::new("brace-labels".into(), "fgc-2026".into(), 0);
+    runtime.create_field_arena(&arena, &FieldDefinition::default());
+    runtime.set_robot_definition(pack.default_robot.as_ref());
+    for (id, team) in [
+        ("a", "Red"),
+        ("b", "blue"),
+        ("c", "red"),
+        ("z", "Spectator"),
+    ] {
+        runtime.add_player(id.into(), id.into(), team.into(), None, &arena);
+    }
+    runtime.players.get_mut("b").unwrap().climbing_brace = Some("brace".into());
+    runtime.players.get_mut("c").unwrap().climbing_brace = Some("brace".into());
+    let everywhere = |id: &str| FieldTrigger {
+        id: id.into(),
+        min: [-100.0; 3],
+        max: [100.0; 3],
+    };
+
+    let labels = |runtime: &SphereRuntime, triggers: &[FieldTrigger]| {
+        runtime
+            .robot_brace_labels(triggers)
+            .into_iter()
+            .map(|(side, label)| format!("{side}:{label}"))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        labels(&runtime, &[]),
+        ["red:none", "blue:contact", "red:contact"],
+        "khán giả bị bỏ, chạm thanh leo mà ngoài vùng là contact"
+    );
+    assert_eq!(
+        labels(&runtime, &[everywhere("redZone2"), everywhere("blueZone3")]),
+        ["red:none", "blue:zone3", "red:zone2"],
+        "chưa chạm thanh leo thì dù trong vùng vẫn là none"
+    );
+}
+
+#[test]
+fn counts_only_balls_released_by_the_matching_alliance_and_drops_on_exit() {
     let mut arena = arena();
     arena.object_count = 1;
     arena.gravity_scale = 0.0;
@@ -378,9 +422,7 @@ fn scores_only_matching_alliance_outtakes_and_reverses_on_exit() {
             id: "blue-suppression-unit".into(),
             kind: "suppression-unit".into(),
             alliance: Some("blue".into()),
-            points: 1,
             enabled: true,
-            requires_robot_outtake: true,
             min: [-1.0, 0.0, -1.0],
             max: [1.0, 1.0, 1.0],
         }],
@@ -389,37 +431,40 @@ fn scores_only_matching_alliance_outtakes_and_reverses_on_exit() {
     };
     let mut runtime = SphereRuntime::new("semantic".into(), "fgc-2026".into(), 0);
     runtime.create_field_arena(&arena, &field);
-    runtime.set_scoring_enabled(true);
     runtime.balls[0].position = [0.0, 0.5, 0.0];
     runtime.balls[0].active = true;
     runtime.tick(1.0 / 60.0);
     assert_eq!(
-        runtime.score_state.blue_score, 0,
-        "unlaunched balls cannot score"
+        runtime.count_in_target("blue-suppression-unit", Some("blue")),
+        Some(0),
+        "bóng chưa bắn không tính"
+    );
+    assert_eq!(
+        runtime.count_in_target("blue-suppression-unit", None),
+        Some(1),
+        "đếm thô vẫn thấy bóng"
     );
 
     runtime.balls[0].last_outtake_alliance = Some("red".into());
-    runtime.tick(1.0 / 60.0);
     assert_eq!(
-        runtime.score_state.blue_score, 0,
-        "opposing alliance cannot score"
+        runtime.count_in_target("blue-suppression-unit", Some("blue")),
+        Some(0),
+        "liên minh đối thủ không tính"
     );
 
     runtime.balls[0].last_outtake_alliance = Some("blue".into());
-    runtime.tick(1.0 / 60.0);
-    assert_eq!(runtime.score_state.blue_score, 1);
-    assert!(runtime.balls[0].active, "scored balls stay physical");
+    assert_eq!(
+        runtime.count_in_target("blue-suppression-unit", Some("blue")),
+        Some(1)
+    );
 
     runtime.balls[0].position[2] = -1.5;
-    runtime.tick(1.0 / 60.0);
     assert_eq!(
-        runtime.score_state.blue_score, 0,
-        "score is removed as soon as the ball physically exits the sensor"
+        runtime.count_in_target("blue-suppression-unit", Some("blue")),
+        Some(0),
+        "ra khỏi vùng thì thôi tính"
     );
-    assert!(
-        (runtime.balls[0].position[2] + 1.5).abs() < 1.0e-6,
-        "scoring must not project a ball back into a retention volume"
-    );
+    assert_eq!(runtime.count_in_target("nope", None), None);
 }
 
 #[test]

@@ -1,0 +1,23 @@
+name: "Thẻ đỏ/trắng: đội đó 0 điểm, điểm liên minh không đổi; thẻ vàng không trừ"
+observation:
+  game: fgc-2026
+  field: { ext_wildfire: 0 }
+  sides:
+    red:
+      su_wildfire: 10
+      teams: [ { id: VIE, card: yellow }, { id: LAO, card: red }, { id: BRU } ]
+      robots:
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+    blue:
+      su_wildfire: 4
+      teams: [ { id: SGP, card: white }, { id: THA }, { id: PHI } ]
+      robots:
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+expect:
+  sides:
+    red: { score: 10, teams: { VIE: 10, LAO: 0, BRU: 10 } }
+    blue: { score: 4, teams: { SGP: 0, THA: 4, PHI: 4 } }

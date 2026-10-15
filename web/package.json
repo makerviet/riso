@@ -5,11 +5,12 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
-		"build:production": "vite build",
+		"build": "node scripts/check-riso-wasm.mjs && vite build",
+		"build:production": "node scripts/check-riso-wasm.mjs && vite build",
 		"preview": "wrangler dev .svelte-kit/cloudflare/_worker.js --port 4173",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"test:rules": "vitest run src/lib/riso.parity.test.ts",
 		"check:bindings": "wrangler types --check",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check . && eslint .",
@@ -59,7 +60,9 @@
 		"typescript-eslint": "^8.60.1",
 		"vaul-svelte": "1.0.0-next.7",
 		"vite": "^8.0.16",
-		"wrangler": "^4.97.0"
+		"vitest": "^4.1.11",
+		"wrangler": "^4.97.0",
+		"yaml": "^2.9.1"
 	},
 	"dependencies": {
 		"@dimforge/rapier3d-compat": "^0.19.3",

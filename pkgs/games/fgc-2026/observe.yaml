@@ -1,0 +1,5 @@
+# Ánh xạ mỗi ô biên bản của rules.yaml sang một phép đo trong mô phỏng.
+field.ext_wildfire:      { count_objects: wildfire, in_target: extinguisher }
+side.su_wildfire:        { count_objects: wildfire, in_target: "{side}-suppression-unit", last_released_by: "{side}" }
+robot.climb:             { brace_state: { none: NONE, contact: CONTACT, zone1: ZONE_1, zone2: ZONE_2, zone3: ZONE_3 } }
+robot.lifted_by_partner: { not_simulated: false }

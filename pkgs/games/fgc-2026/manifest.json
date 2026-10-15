@@ -88,10 +88,12 @@
     { "id": "TELEOP", "durationSec": 150 }
   ],
   "scripts": {
-    "scoring": "rules/scoring.rhai",
-    "penalties": "rules/penalties.rhai",
     "robot_rules": "rules/robot.rhai",
     "arena": "rules/arena.rhai"
+  },
+  "rules": {
+    "scoring": "rules.yaml",
+    "observe": "observe.yaml"
   },
   "robots": {
     "starter-bot": {
@@ -126,8 +128,6 @@
         "semanticId": "redSUscore",
         "kind": "suppression-unit",
         "alliance": "red",
-        "points": 1,
-        "requiresRobotOuttake": true,
         "area": {
           "min": [-1.465079, 0.65, -2.9914392],
           "max": [-0.503383, 1.92352463, -2.7963208]
@@ -138,8 +138,6 @@
         "semanticId": "blueSUscore",
         "kind": "suppression-unit",
         "alliance": "blue",
-        "points": 1,
-        "requiresRobotOuttake": true,
         "area": {
           "min": [0.496984, 0.65, -2.9852828],
           "max": [1.458572, 1.9116209, -2.7940172]
@@ -150,7 +148,6 @@
         "semanticId": "redFSscore",
         "kind": "fire-shield",
         "alliance": "red",
-        "points": 0,
         "enabled": false
       },
       {
@@ -158,14 +155,12 @@
         "semanticId": "blueFSscore",
         "kind": "fire-shield",
         "alliance": "blue",
-        "points": 0,
         "enabled": false
       },
       {
         "id": "extinguisher",
         "semanticId": "EXTscore",
         "kind": "extinguisher",
-        "points": 1,
         "enabled": false
       }
     ]

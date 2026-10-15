@@ -1,0 +1,54 @@
+schema: riso.rules/v1
+game: fgc-2025
+name: Eco Equilibrium
+version: 1.0.0
+source: "FGC 2025 Game Manual §3.6, §6.3"
+sides: { ids: [red, blue], teams: 3 }
+rounding: ceil
+inputs:
+  field:
+    barriers_mitigated:     { type: count, max: 9,   label: "BARRIER trong MITIGATOR" }
+    barriers_in_ecosystems: { type: count, max: 9,   label: "BARRIER còn trong ECOSYSTEM" }
+    bio_freshwater:         { type: count, max: 120, label: "BIODIVERSITY UNIT — Freshwater" }
+    bio_marine:             { type: count, max: 120, label: "BIODIVERSITY UNIT — Marine" }
+    bio_terrestrial:        { type: count, max: 120, label: "BIODIVERSITY UNIT — Terrestrial" }
+  robot:
+    rope: { type: choice, values: [NONE, LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4], label: "Vị trí trên ROPE" }
+constants:
+  rope_increment: { NONE: 0, LEVEL_1: 0.125, LEVEL_2: 0.25, LEVEL_3: 0.375, LEVEL_4: 0.5 }
+  coop_bonus: { 5: 15, 6: 30 }
+values:
+  robot:
+    rope_inc:  "lookup(rope, rope_increment)"
+    supported: "rope == \"LEVEL_2\" || rope == \"LEVEL_3\" || rope == \"LEVEL_4\""
+  field:
+    barrier_points: { expr: "barriers_mitigated", label: "BARRIER" }
+    bio_units:      { expr: "bio_freshwater + bio_marine + bio_terrestrial", label: "BIODIVERSITY UNIT" }
+    sigma:          { expr: "stddev([bio_freshwater, bio_marine, bio_terrestrial])", label: "Độ lệch chuẩn σ" }
+    distribution:   { expr: "if barriers_in_ecosystems > 0 { 0.5 } else if sigma <= 1 { 1.0 } else if sigma < 10 { 0.6 } else { 0.5 }", label: "Distribution factor" }
+    coop:           { expr: "steps(count(all_robots.supported), coop_bonus)", label: "Coopertition" }
+  side:
+    protection: { expr: "1 + sum(robots.rope_inc)", label: "Protection multiplier" }
+    pre_penalty: "(field.barrier_points + field.bio_units * field.distribution) * protection + field.coop"
+fouls:
+  minor: { label: "Thẻ vàng + lỗi nhẹ (5%)",  points: "0.05 * pre_penalty", goes_to: opponent }
+  major: { label: "Thẻ vàng + lỗi nặng (10%)", points: "0.10 * pre_penalty", goes_to: opponent }
+cards: { white: team_zero, yellow: none, red: team_zero }
+score: "pre_penalty + fouls_received"
+ranking:
+  aggregate: average
+  drop_lowest: { count: 1, not_if: [red] }
+  tiebreakers:
+    - { label: "Trận cao nhất", expr: "max(matches.team_score)" }
+    - { label: "Tổng protection multiplier", expr: "sum(matches.protection) - len(matches.protection)" }
+  final_tiebreak: draw
+open_questions:
+  - id: distribution_value
+    used: "0,6 đúng như bảng 3-4 của manual"
+    source: "Máy tính Sheets dùng 1/(1+0,6667) = 0,59999; manual là nguồn chính thức (G04)"
+  - id: barrier_in_ecosystem
+    used: "Còn BARRIER trong ECOSYSTEM → DF = 0,5"
+    source: "Manual §3.2; máy tính Sheets bỏ qua luật này"
+  - id: sigma_boundaries
+    used: "σ ≤ 1 → 1,0; 1 < σ < 10 → 0,6; σ ≥ 10 → 0,5; σ = 0 → 1,0"
+    source: "Manual ghi '0 < σ ≤ 1', bỏ sót σ = 0; máy tính Sheets: IFS(σ<=1, 0, ...)"
