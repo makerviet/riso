@@ -1,6 +1,6 @@
 # Lộ trình RISO
 
-## Hiện trạng (10/2026)
+## Hiện trạng trước giai đoạn 1 (đầu 10/2026)
 
 - Vật lý và đồng bộ mạng rất tốt: bộ giải bóng XPBD riêng, giao thức nhị phân FGS1, p99 < 1 ms với 1.000 bóng.
 - Tính điểm thật chỉ có cộng điểm từng bóng vào Suppression Unit, **viết cứng trong Rust**
@@ -23,8 +23,19 @@ Còn tồn / ngoài phạm vi:
 
 - Extinguisher và Partner climb chưa mô phỏng (chấm tay trên biên bản, `not_simulated`).
 - SeaHeal chờ ban tổ chức công bố luật.
-- Phần cộng điểm viết cứng trong Rust đã gỡ; `on_phase_start`, `on_match_end`, `penalties.rhai` vẫn chưa nối.
-- `pnpm run check` ở `web/` còn 9 lỗi typed-href có sẵn từ upstream (layouts, trang auth) nên job CI `web` đỏ ở bước này; chưa sửa trong giai đoạn 1.
+- Phần cộng điểm viết cứng trong Rust đã gỡ. Lỗi phạt giờ khai báo ở mục `fouls` của `rules.yaml` (trọng tài nhập số lần trên `/referee`); `penalties.rhai` đã xoá. Hook `on_phase_start`, `on_match_end` của Rhai vẫn chưa nối.
+- `pnpm run check` ở `web/` còn 9 lỗi typed-href có sẵn từ upstream (layouts, trang auth) nên job CI `web` đỏ ở bước này; chưa sửa trong giai đoạn 1 (CI chạy `pnpm vitest run` trước bước này để test vẫn chạy).
+
+### Còn lại của giai đoạn 1
+
+- Trang trọng tài song ngữ vi/en: chuyển chuỗi giao diện sang Paraglide, hiển thị `label_en` của ô biên bản/giá trị/lỗi.
+- Cột giá trị đã làm tròn trên bảng điểm (hiện chỉ hiện giá trị thô và điểm cuối).
+- Hiện giá trị có nhãn cấp robot (`values.robot`) trên trang trọng tài và biên bản in.
+- Việc nhỏ hoãn lại:
+  - `override` gõ sai khoá thì tạo khoá mới thay vì báo lỗi.
+  - CLI `riso check` panic ở một số ca `expect` (cần báo lỗi có mã thay vì panic).
+  - Khoá phân biệt luật trong server dựa trên con trỏ `Arc` — đổi gói (cùng nội dung) cũng bị coi là luật mới.
+  - API trả lỗi dạng chữ thô (plain text) thay vì JSON có mã lỗi.
 
 ## Giai đoạn 2 — Tầng quản lý giải
 

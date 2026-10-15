@@ -85,9 +85,11 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      # Chạy test trước `check`: `check` còn 9 lỗi typed-href có sẵn từ upstream
+      # và sẽ dừng job, test luật/WASM phải chạy được bất kể.
+      - run: pnpm vitest run
       - run: pnpm run check:bindings
       - run: pnpm run check
-      - run: pnpm vitest run
       - run: pnpm run build
 
   api:

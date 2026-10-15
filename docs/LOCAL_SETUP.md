@@ -45,6 +45,15 @@ cd web && pnpm install && pnpm dev
 
 Trang chấm điểm trận thật: http://localhost:5173/referee
 
+Build bản production: luôn chạy `./scripts/build-rules-wasm.sh` (từ thư mục gốc) **trước** `pnpm build`
+— web nhập bộ máy luật từ `crates/riso-rules/pkg`; thiếu gói này thì `pnpm build` dừng ngay và báo lỗi.
+Sau mỗi lần sửa Rust trong `crates/riso-rules` cũng phải build lại WASM.
+
+```sh
+./scripts/build-rules-wasm.sh
+cd web && pnpm build
+```
+
 ## 4. Máy chủ game (cổng 3000)
 
 Đăng nhập, rồi tạo khoá máy chủ game (trang Admin → Game servers, hoặc `POST /api/admin/game-servers`
