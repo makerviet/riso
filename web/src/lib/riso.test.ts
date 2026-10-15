@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { draftKey, loadRules } from './riso';
+import { draftKey, fillFoulCounts, loadRules, stepCount } from './riso';
 
 const games = join(__dirname, '../../../pkgs/games');
 const wasm = () => readFileSync(join(__dirname, '../../../crates/riso-rules/pkg/riso_rules_bg.wasm'));
@@ -51,5 +51,46 @@ describe('loadRules', () => {
 		expect(r.errors).toContainEqual(
 			expect.objectContaining({ path: 'sides.red.su_wildfire', code: 'OBS_RANGE' })
 		);
+	});
+
+	it('biên bản trống có sẵn 0 cho mọi lỗi, nên +/− lỗi chạy được', async () => {
+		const { handle, rules } = await loadRules('fgc-2026', fakeFetch, wasm());
+		const obs = JSON.parse(handle.blankObservation());
+		const ids = Object.keys(rules.fouls);
+		expect(ids.length).toBeGreaterThan(0);
+		for (const side of Object.values(obs.sides) as { fouls: Record<string, number> }[]) {
+			expect(side.fouls).toEqual(Object.fromEntries(ids.map((id) => [id, 0])));
+			expect(stepCount(side.fouls[ids[0]], 1, 99)).toBe(1);
+		}
+	});
+
+	it('ô lỗi bị xoá (null) báo OBS_RANGE đúng đường dẫn, không hỏng cả biên bản', async () => {
+		const { handle, rules } = await loadRules('fgc-2026', fakeFetch, wasm());
+		const obs = JSON.parse(handle.blankObservation());
+		for (const side of Object.values(obs.sides) as { teams?: unknown }[]) side.teams = [];
+		const id = Object.keys(rules.fouls)[0];
+		obs.sides.red.fouls[id] = null;
+		const r = JSON.parse(handle.score(JSON.stringify(obs)));
+		expect(r.ok).toBe(false);
+		expect(r.errors).toEqual([expect.objectContaining({ path: `sides.red.fouls.${id}`, code: 'OBS_RANGE' })]);
+		expect(r.errors[0].message).not.toMatch(/Text\(/);
+	});
+});
+
+describe('stepCount / fillFoulCounts', () => {
+	it('ô rỗng hoặc thiếu coi như 0, chặn ngoài khoảng', () => {
+		expect(stepCount(undefined, 1)).toBe(1);
+		expect(stepCount(null, 1)).toBe(1);
+		expect(stepCount('', 1)).toBe(1);
+		expect(stepCount(3, -1)).toBe(2);
+		expect(stepCount(0, -1)).toBeNull();
+		expect(stepCount(99, 1, 99)).toBeNull();
+	});
+
+	it('bản nháp cũ thiếu fouls được bổ sung 0, giữ số đã nhập', () => {
+		const sides: Record<string, { fouls?: Record<string, unknown> }> = { red: {}, blue: { fouls: { minor: 2 } } };
+		fillFoulCounts(sides, ['minor', 'major']);
+		expect(sides.red.fouls).toEqual({ minor: 0, major: 0 });
+		expect(sides.blue.fouls).toEqual({ minor: 2, major: 0 });
 	});
 });

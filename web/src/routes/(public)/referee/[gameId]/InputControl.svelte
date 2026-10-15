@@ -1,13 +1,13 @@
 <script lang="ts">
-	import type { InputDef } from '$lib/riso';
+	import { stepCount, type InputDef } from '$lib/riso';
 
 	let { def, value = $bindable(), error }: { def: InputDef; value: number | string | boolean; error?: string } = $props();
 	const uid = $props.id();
 	const labelId = `${uid}-label`;
 	const inputId = `${uid}-input`;
 	const step = (delta: number) => {
-		const next = Number(value) + delta;
-		if (next >= 0 && (def.max == null || next <= def.max)) value = next;
+		const next = stepCount(value, delta, def.max);
+		if (next !== null) value = next;
 	};
 </script>
 
@@ -17,7 +17,7 @@
 			<span id={labelId} class="text-sm font-medium">{def.label}</span>
 			<div class="flex items-center gap-2">
 				<button type="button" class="h-12 w-12 rounded-lg border text-2xl" onclick={() => step(-1)} aria-label={`Giảm ${def.label}`}>−</button>
-				<input id={inputId} aria-labelledby={labelId} class="h-12 w-20 rounded-lg border text-center text-xl" type="number" min="0" max={def.max ?? undefined} bind:value />
+				<input id={inputId} aria-labelledby={labelId} class="h-12 w-20 rounded-lg border border-slate-400 bg-white text-center text-xl text-slate-900" type="number" min="0" max={def.max ?? undefined} bind:value />
 				<button type="button" class="h-12 w-12 rounded-lg border text-2xl" onclick={() => step(1)} aria-label={`Tăng ${def.label}`}>+</button>
 			</div>
 		</div>
@@ -42,5 +42,5 @@
 			<span class="text-sm font-medium">{def.label}</span>
 		</label>
 	{/if}
-	{#if error}<span class="text-sm text-red-600">{error}</span>{/if}
+	{#if error}<span class="rounded bg-red-950/60 px-2 py-0.5 text-sm text-red-200">{error}</span>{/if}
 </div>

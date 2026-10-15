@@ -65,3 +65,18 @@ export async function loadRules(
 export function draftKey(gameId: string): string {
 	return `riso-referee-draft:${gameId}`;
 }
+
+/** Bước +/− của ô đếm. Ô rỗng/không phải số coi như 0; trả `null` nếu ra ngoài 0..max. */
+export function stepCount(value: unknown, delta: number, max?: number | null): number | null {
+	const current = Number(value);
+	const next = (value === null || value === '' || !Number.isFinite(current) ? 0 : current) + delta;
+	return next >= 0 && (max == null || next <= max) ? next : null;
+}
+
+/** Bổ sung `fouls[id] = 0` cho mọi lỗi trong luật mà biên bản (vd. bản nháp cũ) còn thiếu. */
+export function fillFoulCounts(sides: Record<string, { fouls?: Record<string, unknown> }>, foulIds: string[]): void {
+	for (const side of Object.values(sides)) {
+		side.fouls ??= {};
+		for (const id of foulIds) if (!(id in side.fouls)) side.fouls[id] = 0;
+	}
+}

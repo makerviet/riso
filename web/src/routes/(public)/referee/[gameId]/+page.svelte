@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import InputControl from './InputControl.svelte';
-	import { draftKey, loadRules, type RulesDescription } from '$lib/riso';
+	import { draftKey, fillFoulCounts, loadRules, type RulesDescription } from '$lib/riso';
 	import type { RulesHandle } from '$riso/riso_rules.js';
 
 	let { data } = $props();
@@ -38,11 +38,13 @@
 				side.teams = Array.from({ length: loaded.rules.sides.teams }, () => ({ id: '', card: null }));
 			}
 			if (draft?.game === blank.game && draft.rules_version === loaded.rules.version) {
-					const { rules_version: _v, ...rest } = draft;
-					obs = rest;
-				} else {
-					obs = blank;
-				}
+				const { rules_version: _v, ...rest } = draft;
+				fillFoulCounts(rest.sides, Object.keys(loaded.rules.fouls));
+				obs = rest;
+			} else {
+				fillFoulCounts(blank.sides, Object.keys(loaded.rules.fouls));
+				obs = blank;
+			}
 		} catch (e) {
 			loadError = e instanceof Error ? e.message : String(e);
 		}
@@ -92,10 +94,12 @@
 
 	function reset() {
 		if (!handle || !rules) return;
+		if (!window.confirm('Xoá toàn bộ biên bản trận này?')) return;
 		const blank = JSON.parse(handle.blankObservation()) as Obs;
 		for (const side of Object.values(blank.sides)) {
 			side.teams = Array.from({ length: rules.sides.teams }, () => ({ id: '', card: null }));
 		}
+		fillFoulCounts(blank.sides, Object.keys(rules.fouls));
 		obs = blank;
 	}
 
@@ -114,7 +118,7 @@
 
 <main class="mx-auto max-w-6xl p-4 print:p-0">
 	{#if loadError}
-		<p class="text-red-600">{loadError}</p>
+		<p class="rounded bg-red-950/60 px-3 py-2 text-red-200">{loadError}</p>
 	{:else if !rules || !obs}
 		<p>Đang tải luật…</p>
 	{:else}
@@ -147,12 +151,12 @@
 							{#each obs.sides[side].robots as robot, i (i)}
 								<fieldset class="grid gap-2 rounded border p-2">
 									<legend class="px-1 text-sm">Robot {i + 1}</legend>
-									<input class="rounded border px-2 py-1" placeholder="Mã đội" bind:value={obs.sides[side].teams[i].id} />
+									<input class="rounded border border-slate-400 bg-white px-2 py-1 text-slate-900 placeholder:text-slate-500" placeholder="Mã đội" bind:value={obs.sides[side].teams[i].id} />
 									{#each Object.entries(rules.inputs.robot) as [name, def] (name)}
 										<InputControl {def} bind:value={robot[name]} error={errorFor(`sides.${side}.robots.${i}.${name}`)} />
 									{/each}
 									{#if Object.keys(rules.cards).length}
-										<select class="rounded border px-2 py-1" bind:value={obs.sides[side].teams[i].card}>
+										<select class="rounded border border-slate-400 bg-white px-2 py-1 text-slate-900" bind:value={obs.sides[side].teams[i].card}>
 											<option value={null}>Không thẻ</option>
 											{#each Object.keys(rules.cards) as card (card)}<option value={card}>Thẻ {card}</option>{/each}
 										</select>
@@ -190,7 +194,7 @@
 						<div class="flex justify-between text-sm"><span>{v.label}</span><span>{v.value}</span></div>
 					{/each}
 				{:else if result}
-					<ul class="text-sm text-red-600">
+					<ul class="grid gap-1 rounded bg-red-950/60 p-2 text-sm text-red-200">
 						{#each result.errors as e (e.path + e.code)}<li>{e.path}: {e.message}</li>{/each}
 					</ul>
 				{/if}
