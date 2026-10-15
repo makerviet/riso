@@ -616,14 +616,25 @@ fn load_rules(snapshot: &GamePackRuntimeSnapshot) -> Result<LoadedRules, GameErr
             )
         },
     )?;
-    let observe = snapshot
-        .observe
-        .as_deref()
-        .map(|text| crate::game::scoring_bridge::parse_observe(text, &rules).map(Arc::new))
-        .transpose()
+    // Gói tới được đây là gói mô phỏng (đã có sân): luật mà không có phép đo
+    // thì `rescore` không bao giờ chạy và trận âm thầm 0–0, nên từ chối gói.
+    let Some(observe_text) = snapshot.observe.as_deref() else {
+        return Err(GameError::ManifestParseError(match &paths.observe {
+            Some(path) => format!(
+                "Runtime snapshot thiếu {path} (observe.yaml) của đề {} dù manifest khai báo rules.observe",
+                snapshot.manifest.id
+            ),
+            None => format!(
+                "Đề {} có rules.yaml nhưng manifest không khai báo rules.observe (observe.yaml): gói mô phỏng cần phép đo để tính điểm",
+                snapshot.manifest.id
+            ),
+        }));
+    };
+    let observe = crate::game::scoring_bridge::parse_observe(observe_text, &rules)
+        .map(Arc::new)
         .map_err(GameError::ScriptCompilationError)?;
     info!(game = %rules.file.game, version = %rules.file.version, "Loaded scoring rules");
-    Ok((Some(Arc::new(rules)), observe))
+    Ok((Some(Arc::new(rules)), Some(observe)))
 }
 
 mod field;

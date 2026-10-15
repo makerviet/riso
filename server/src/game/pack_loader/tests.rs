@@ -1,4 +1,5 @@
 use super::{GamePackRuntimeSnapshot, PackLoader};
+use crate::game::error::GameError;
 use std::collections::BTreeMap;
 
 /// Đọc gói fgc-2026 từ đĩa thành snapshot giống API trả về.
@@ -176,4 +177,26 @@ fn snapshot_without_rules_yaml_is_rejected() {
     snapshot.rules.clear();
     let error = loader.load_runtime_snapshot(snapshot).unwrap_err();
     assert!(error.to_string().contains("rules.yaml"), "{error}");
+}
+
+#[test]
+fn declared_observe_missing_from_snapshot_rejects_the_pack() {
+    let loader = PackLoader::new("0.1.0");
+    let mut snapshot = fixture_snapshot();
+    assert!(snapshot.manifest.rules.as_ref().unwrap().observe.is_some());
+    snapshot.observe = None;
+    let error = loader.load_runtime_snapshot(snapshot).unwrap_err();
+    assert!(matches!(error, GameError::ManifestParseError(_)), "{error}");
+    assert!(error.to_string().contains("observe.yaml"), "{error}");
+}
+
+#[test]
+fn simulated_pack_with_rules_but_no_observe_is_rejected() {
+    let loader = PackLoader::new("0.1.0");
+    let mut snapshot = fixture_snapshot();
+    snapshot.manifest.rules.as_mut().unwrap().observe = None;
+    snapshot.observe = None;
+    let error = loader.load_runtime_snapshot(snapshot).unwrap_err();
+    assert!(matches!(error, GameError::ManifestParseError(_)), "{error}");
+    assert!(error.to_string().contains("rules.observe"), "{error}");
 }

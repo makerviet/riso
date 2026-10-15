@@ -313,3 +313,14 @@ fn score_sheet_section_is_omitted_when_not_requested() {
     let baseline = encode_baseline(&state, ProcessMetrics::default());
     assert!(find_section(&baseline, 14).is_some());
 }
+
+#[test]
+fn finalize_locks_robot_states_when_settling_was_skipped() {
+    // Vòng lặp trễ nhảy thẳng qua match_finalizes: chưa từng gọi lock_at_buzzer.
+    let pack = fgc_2026_pack();
+    let mut runtime = RuntimeBackend::new("t".into(), &pack, 1);
+    let mut scoring = MatchScoring::default();
+    assert!(scoring.locked_robots.is_none());
+    scoring.finalize(&mut runtime, &pack).expect("tính được");
+    assert_eq!(scoring.locked_robots, Some(Vec::new()));
+}

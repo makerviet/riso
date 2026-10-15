@@ -653,12 +653,14 @@ impl MatchScoring {
         }
     }
 
-    /// Biên bản cuối, tính một lần với trạng thái leo đã chốt.
+    /// Biên bản cuối, tính một lần với trạng thái leo đã chốt. Tự chốt nếu
+    /// chưa chốt (vòng lặp bị trễ, nhảy qua cả giai đoạn lắng sau còi).
     fn finalize(
         &mut self,
         runtime: &mut RuntimeBackend,
         pack: &GamePackMetadata,
     ) -> Option<&ScoredObservation> {
+        self.lock_at_buzzer(runtime, pack);
         if self.final_observation.is_none() {
             self.final_observation = rescore(runtime, pack, self.locked_robots.as_deref());
         }
