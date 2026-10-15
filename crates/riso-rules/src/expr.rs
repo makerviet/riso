@@ -6,8 +6,22 @@ pub type EvalResult<T> = Result<T, Box<EvalAltResult>>;
 
 pub const MAX_OPERATIONS: u64 = 10_000;
 pub const MAX_EXPR_DEPTH: usize = 64;
-const FORBIDDEN: [&str; 9] = [
-    "while", "loop", "for", "fn", "import", "eval", "print", "debug", "do",
+/// Từ cấm: vòng lặp, hàm tự viết, gọi động (`Fn`/`call`/`curry`) và hàm
+/// không tất định (`timestamp`) — công thức phải thuần (spec §3.1, §4.7).
+const FORBIDDEN: [&str; 13] = [
+    "while",
+    "loop",
+    "for",
+    "fn",
+    "import",
+    "eval",
+    "print",
+    "debug",
+    "do",
+    "timestamp",
+    "Fn",
+    "call",
+    "curry",
 ];
 const KEYWORDS: [&str; 4] = ["if", "else", "true", "false"];
 
@@ -107,7 +121,34 @@ pub struct Compiled {
     pub refs: Vec<Vec<String>>,
 }
 
+/// `|` đơn ngoài chuỗi (không thuộc `||`) chỉ có thể là closure `|x| …`.
+fn has_closure_pipe(src: &str) -> bool {
+    let chars: Vec<char> = src.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        match chars[i] {
+            '"' => {
+                i += 1;
+                while i < chars.len() && chars[i] != '"' {
+                    if chars[i] == '\\' {
+                        i += 1;
+                    }
+                    i += 1;
+                }
+            }
+            '|' if chars.get(i + 1) == Some(&'|') => i += 1,
+            '|' => return true,
+            _ => {}
+        }
+        i += 1;
+    }
+    false
+}
+
 pub fn compile(engine: &Engine, src: &str) -> Result<Compiled, CompileError> {
+    if has_closure_pipe(src) {
+        return Err(CompileError::Forbidden("|".into()));
+    }
     let scanned = scan(src);
     if let Some(word) = scanned
         .words
@@ -119,6 +160,10 @@ pub fn compile(engine: &Engine, src: &str) -> Result<Compiled, CompileError> {
     let ast = engine
         .compile_expression(&scanned.rewritten)
         .map_err(|error| CompileError::Syntax(error.to_string()))?;
+    // Closure không tham số (`|| 42`) lọt qua bộ quét `|` nhưng vẫn sinh hàm ẩn danh.
+    if ast.iter_functions().next().is_some() {
+        return Err(CompileError::Forbidden("|".into()));
+    }
     Ok(Compiled {
         source: src.to_string(),
         ast,
@@ -352,11 +397,37 @@ mod tests {
     #[test]
     fn forbidden_constructs_are_rejected() {
         let engine = new_engine();
-        for src in ["while true { 1 }", "print(1)", "eval(\"1\")", "loop { 1 }"] {
+        for src in [
+            "while true { 1 }",
+            "print(1)",
+            "eval(\"1\")",
+            "loop { 1 }",
+            "timestamp()",
+            "timestamp().elapsed",
+            "call(Fn(\"abs\"), 1)",
+            "[1, 2].map(|x| x * 2).len()",
+            "[1].map(|x|x)[0]",
+            "(|| 42).len()",
+        ] {
             assert!(
                 matches!(compile(&engine, src), Err(CompileError::Forbidden(_))),
                 "{src} phải bị cấm"
             );
+        }
+    }
+
+    #[test]
+    fn closure_pipe_scanner() {
+        assert!(has_closure_pipe("[1].map(|x| x)"));
+        assert!(!has_closure_pipe("a || b"));
+        assert!(!has_closure_pipe("\"a|b\" == x"));
+    }
+
+    #[test]
+    fn pipes_inside_strings_and_logical_or_are_allowed() {
+        let engine = new_engine();
+        for src in ["true || false", "if \"a|b\" == \"a|b\" { 1 } else { 0 }"] {
+            assert!(compile(&engine, src).is_ok(), "{src} phải hợp lệ");
         }
     }
 
