@@ -1606,10 +1606,6 @@
 		templateUrl={fieldAssets?.ui?.scoreboard}
 	/>
 
-	<div class="pointer-events-none absolute top-24 left-3 z-10">
-		<ScoreSheetPanel data={scoreSheet} />
-	</div>
-
 	{#if matchOverviewVisible}
 		<MatchOverview
 			matchId={activeMatchId}
@@ -1659,34 +1655,44 @@
 		</div>
 	{/if}
 
+	<!-- Cột trái: thẻ Live match rồi bảng Chi tiết điểm xếp nối tiếp nhau, để
+	     bảng điểm không bị thẻ HUD (cùng z-10, đứng sau trong DOM) che mất. -->
 	<div
-		class="absolute top-4 left-4 z-10 rounded-lg border border-white/15 bg-black/60 px-4 py-3 text-sm text-white backdrop-blur"
+		class="pointer-events-none absolute top-4 left-4 z-10 flex max-h-[calc(100dvh-2rem)] flex-col items-start gap-2"
+		data-testid="match-left-column"
 	>
-		<p class="font-semibold">Live match</p>
-		<p class="mt-1 text-white/70">
-			{status} · {players.length} player{players.length === 1 ? '' : 's'} · Ping: {pingMs === null
-				? '—'
-				: `${Math.round(pingMs)} ms`}
-		</p>
-		<p class="mt-1 text-xs text-white/60">Pack: {packVersion}</p>
-		{#if trackedPlayer?.braceZone}
-			<p class="mt-1 text-xs font-medium text-lime-200">
-				Brace zone {trackedPlayer.braceZone} · ×{trackedPlayer.braceMultiplier.toFixed(1)} score
+		<div
+			class="pointer-events-auto rounded-lg border border-white/15 bg-black/60 px-4 py-3 text-sm text-white backdrop-blur"
+		>
+			<p class="font-semibold">Live match</p>
+			<p class="mt-1 text-white/70">
+				{status} · {players.length} player{players.length === 1 ? '' : 's'} · Ping: {pingMs === null
+					? '—'
+					: `${Math.round(pingMs)} ms`}
 			</p>
-		{/if}
-		<p class="mt-2 text-xs text-white/60">
-			W/S drive · A/D turn · Space intake · E flywheel outtake · Q brace climb · Gamepad follows
-			your Settings mapping
-		</p>
-		<p class="mt-1 max-w-72 truncate text-xs text-white/50" title={gamepadName}>
-			<span class={gamepadConnected ? 'text-cyan-300' : 'text-white/35'}>●</span>
-			{gamepadConnected ? gamepadName : 'Connect a gamepad and press a button'}
-		</p>
-		<p class="mt-1 text-xs text-white/40">A: brake</p>
-		<p class="mt-1 text-xs text-white/40">
-			C: camera · F or R3: flip north/south · B: field + score volumes · Ctrl+F3: diagnostics
-		</p>
-		{#if error}<p class="mt-2 text-fuchsia-300">✖ {error}</p>{/if}
+			<p class="mt-1 text-xs text-white/60">Pack: {packVersion}</p>
+			{#if trackedPlayer?.braceZone}
+				<p class="mt-1 text-xs font-medium text-lime-200">
+					Brace zone {trackedPlayer.braceZone} · ×{trackedPlayer.braceMultiplier.toFixed(1)} score
+				</p>
+			{/if}
+			<p class="mt-2 text-xs text-white/60">
+				W/S drive · A/D turn · Space intake · E flywheel outtake · Q brace climb · Gamepad follows
+				your Settings mapping
+			</p>
+			<p class="mt-1 max-w-72 truncate text-xs text-white/50" title={gamepadName}>
+				<span class={gamepadConnected ? 'text-cyan-300' : 'text-white/35'}>●</span>
+				{gamepadConnected ? gamepadName : 'Connect a gamepad and press a button'}
+			</p>
+			<p class="mt-1 text-xs text-white/40">A: brake</p>
+			<p class="mt-1 text-xs text-white/40">
+				C: camera · F or R3: flip north/south · B: field + score volumes · Ctrl+F3: diagnostics
+			</p>
+			{#if error}<p class="mt-2 text-fuchsia-300">✖ {error}</p>{/if}
+		</div>
+		<div class="min-h-0 overflow-y-auto">
+			<ScoreSheetPanel data={scoreSheet} />
+		</div>
 	</div>
 	<div
 		class="absolute top-4 right-4 z-10 flex max-w-[calc(100vw-2rem)] flex-wrap items-center justify-end gap-2"
