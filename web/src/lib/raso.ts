@@ -1,4 +1,4 @@
-import init, { initSync, RulesHandle } from '$riso/riso_rules.js';
+import init, { initSync, RulesHandle } from '$raso/raso_rules.js';
 
 export type InputDef = {
 	type: 'count' | 'choice' | 'bool';
@@ -63,7 +63,7 @@ export async function loadRules(
 }
 
 export function draftKey(gameId: string): string {
-	return `riso-referee-draft:${gameId}`;
+	return `raso-referee-draft:${gameId}`;
 }
 
 /** Bước +/− của ô đếm. Ô rỗng/không phải số coi như 0; trả `null` nếu ra ngoài 0..max. */

@@ -4,7 +4,7 @@ use serde_yaml_ng::{Mapping, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub const MAX_EXTENDS_DEPTH: usize = 4;
-pub const SCHEMA: &str = "riso.rules/v1";
+pub const SCHEMA: &str = "raso.rules/v1";
 /// Tên dành riêng cho phạm vi công thức (spec mục 4.3).
 pub const RESERVED: [&str; 8] = [
     "robots",
@@ -329,14 +329,14 @@ mod tests {
     #[test]
     fn yaml_syntax_error_has_line() {
         let errors =
-            parse_rules("schema: riso.rules/v1\ngame: [unclosed\n", &NoParents).unwrap_err();
+            parse_rules("schema: raso.rules/v1\ngame: [unclosed\n", &NoParents).unwrap_err();
         assert_eq!(errors[0].code, "RULE_YAML");
         assert!(errors[0].line.is_some());
     }
 
     #[test]
     fn wrong_schema_and_side_count_are_rejected() {
-        let wrong = BASE.replace("riso.rules/v1", "riso.rules/v9");
+        let wrong = BASE.replace("raso.rules/v1", "raso.rules/v9");
         assert_eq!(
             parse_rules(&wrong, &NoParents).unwrap_err()[0].code,
             "RULE_SCHEMA"

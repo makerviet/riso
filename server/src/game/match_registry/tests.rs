@@ -156,7 +156,7 @@ fn rescore_turns_balls_in_target_into_score_sheet() {
     let (obs, sheet) = rescore(&mut runtime, &pack, None).expect("tính được");
     assert_eq!(
         obs.sides["red"].inputs["su_wildfire"],
-        riso_rules::InputValue::Int(3)
+        raso_rules::InputValue::Int(3)
     );
     assert_eq!(sheet.sides["red"].score, 3);
     let score = runtime.score_state();
@@ -175,7 +175,7 @@ fn locked_robot_labels_are_used_for_final_score() {
     let (obs, _) = rescore(&mut runtime, &pack, Some(&locked)).unwrap();
     assert_eq!(
         obs.sides["red"].robots[0]["climb"],
-        riso_rules::InputValue::Text("ZONE_3".into())
+        raso_rules::InputValue::Text("ZONE_3".into())
     );
 }
 
@@ -196,9 +196,9 @@ fn completion_result_carries_observation_and_score_sheet() {
 
 #[test]
 fn score_state_from_sheet_reads_side_scores_and_labelled_values() {
-    let rules = riso_rules::load(
+    let rules = raso_rules::load(
         include_str!("../../../../pkgs/games/fgc-2026/rules.yaml"),
-        &riso_rules::NoParents,
+        &raso_rules::NoParents,
     )
     .unwrap();
     let mut obs = rules.blank_observation();
@@ -206,8 +206,8 @@ fn score_state_from_sheet_reads_side_scores_and_labelled_values() {
         .get_mut("blue")
         .unwrap()
         .inputs
-        .insert("su_wildfire".into(), riso_rules::InputValue::Int(7));
-    let sheet = Arc::new(riso_rules::score(&rules, &obs).unwrap());
+        .insert("su_wildfire".into(), raso_rules::InputValue::Int(7));
+    let sheet = Arc::new(raso_rules::score(&rules, &obs).unwrap());
     let state = ScoreState::from_sheet(sheet);
     assert_eq!(state.blue_score, 7);
     assert_eq!(state.red_score, 0);
@@ -260,7 +260,7 @@ fn final_score_uses_robot_states_locked_at_buzzer() {
     let (obs, _) = scoring.finalize(&mut runtime, &pack).expect("tính được");
     assert_eq!(
         obs.sides["red"].robots[0]["climb"],
-        riso_rules::InputValue::Text("ZONE_3".into())
+        raso_rules::InputValue::Text("ZONE_3".into())
     );
 }
 
@@ -281,12 +281,12 @@ fn find_section(bytes: &[u8], wanted: u16) -> Option<Vec<u8>> {
 
 fn state_with_blank_sheet() -> MatchStateSync {
     let mut state = test_state();
-    let rules = riso_rules::load(
+    let rules = raso_rules::load(
         include_str!("../../../../pkgs/games/fgc-2026/rules.yaml"),
-        &riso_rules::NoParents,
+        &raso_rules::NoParents,
     )
     .unwrap();
-    let sheet = std::sync::Arc::new(riso_rules::score(&rules, &rules.blank_observation()).unwrap());
+    let sheet = std::sync::Arc::new(raso_rules::score(&rules, &rules.blank_observation()).unwrap());
     state.score = ScoreState::from_sheet(sheet);
     state
 }

@@ -23,7 +23,7 @@ jobs:
         with:
           workspaces: |
             server
-            crates/riso-rules
+            crates/raso-rules
       - run: cargo fmt --all -- --check
       - run: cargo test --all-targets
         env:
@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: crates/riso-rules
+        working-directory: crates/raso-rules
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -43,7 +43,7 @@ jobs:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: crates/riso-rules
+          workspaces: crates/raso-rules
       - run: cargo fmt --all -- --check
       - run: cargo test --all-targets
         env:
@@ -54,14 +54,14 @@ jobs:
           for d in ../../pkgs/games/*/; do
             [ -f "${d}rules.yaml" ] && dirs="$dirs $d"
           done
-          cargo run --features cli --bin riso -- check $dirs
+          cargo run --features cli --bin raso -- check $dirs
       - run: cargo install wasm-pack --locked
       - run: ./scripts/build-rules-wasm.sh
         working-directory: .
       - uses: actions/upload-artifact@v4
         with:
-          name: riso-rules-wasm
-          path: crates/riso-rules/pkg
+          name: raso-rules-wasm
+          path: crates/raso-rules/pkg
 
   web:
     name: Web client
@@ -74,8 +74,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: riso-rules-wasm
-          path: crates/riso-rules/pkg
+          name: raso-rules-wasm
+          path: crates/raso-rules/pkg
       - uses: pnpm/action-setup@v4
         with:
           version: 11.1.3

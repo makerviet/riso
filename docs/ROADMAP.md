@@ -1,4 +1,4 @@
-# Lộ trình RISO
+# Lộ trình RASO
 
 ## Hiện trạng trước giai đoạn 1 (đầu 10/2026)
 
@@ -17,7 +17,7 @@
 - Gỡ phần điểm viết cứng khỏi Rust; nối đủ các hook.
 - Bảng chi tiết điểm từng trận (score breakdown).
 
-Đã làm: crate `riso-rules` (rules.yaml, biên bản, `riso check`, WASM), server tính điểm từ luật, trang `/referee`, CI job `rules`.
+Đã làm: crate `raso-rules` (rules.yaml, biên bản, `raso check`, WASM), server tính điểm từ luật, trang `/referee`, CI job `rules`.
 
 Còn tồn / ngoài phạm vi:
 
@@ -33,7 +33,7 @@ Còn tồn / ngoài phạm vi:
 - Hiện giá trị có nhãn cấp robot (`values.robot`) trên trang trọng tài và biên bản in.
 - Việc nhỏ hoãn lại:
   - `override` gõ sai khoá thì tạo khoá mới thay vì báo lỗi.
-  - CLI `riso check` panic ở một số ca `expect` (cần báo lỗi có mã thay vì panic).
+  - CLI `raso check` panic ở một số ca `expect` (cần báo lỗi có mã thay vì panic).
   - Khoá phân biệt luật trong server dựa trên con trỏ `Arc` — đổi gói (cùng nội dung) cũng bị coi là luật mới.
   - API trả lỗi dạng chữ thô (plain text) thay vì JSON có mã lỗi.
 
@@ -55,7 +55,7 @@ Còn tồn / ngoài phạm vi:
 
 ## Giai đoạn 5 — Thư viện đề
 
-- Công cụ `riso pack new|validate|test`, repo đề riêng nhận PR.
+- Công cụ `raso pack new|validate|test`, repo đề riêng nhận PR.
 - Đề FGC: 2017 H2O Flow, 2018 Energy Impact, 2019 Ocean Opportunities, 2022 Carbon Capture,
   2023 Hydrogen Horizons, 2024 Feeding the Future, 2025 Eco Equilibrium, 2026 Igniting Innovation.
   (Tên đề 2017/2018/2024 cần đối chiếu trang lưu trữ chính thức.)

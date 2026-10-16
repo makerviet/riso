@@ -1,16 +1,16 @@
 [package]
-name = "riso-rules"
+name = "raso-rules"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
-description = "RISO — bộ máy tính điểm khai báo bằng YAML cho giải robot"
+description = "RASO — bộ máy tính điểm khai báo bằng YAML cho giải robot"
 
 [lib]
 crate-type = ["rlib", "cdylib"]
 
 [[bin]]
-name = "riso"
-path = "src/bin/riso.rs"
+name = "raso"
+path = "src/bin/raso.rs"
 required-features = ["cli"]
 
 [features]

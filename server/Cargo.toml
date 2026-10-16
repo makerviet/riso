@@ -9,7 +9,7 @@ axum = { version = "0.8.9", features = ["ws"] }
 futures-util = "0.3.31"
 rapier3d = { version = "0.34.0", features = ["parallel"] }
 rhai = { version = "1.25.1", features = ["decimal", "sync"] }
-riso-rules = { path = "../crates/riso-rules" }
+raso-rules = { path = "../crates/raso-rules" }
 rust_decimal = "1.43"
 serde_yaml_ng = "0.10"
 indexmap = "2"

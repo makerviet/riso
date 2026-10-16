@@ -2,7 +2,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, beforeAll } from 'vitest';
 import { parse } from 'yaml';
-import { initSync, RulesHandle } from '../../../crates/riso-rules/pkg/riso_rules.js';
+import { initSync, RulesHandle } from '../../../crates/raso-rules/pkg/raso_rules.js';
 
 const gamesRoot = join(__dirname, '../../../pkgs/games');
 
@@ -30,7 +30,7 @@ function item(items: Item[], name: string, where: string): Item {
 
 beforeAll(() => {
 	initSync({
-		module: readFileSync(join(__dirname, '../../../crates/riso-rules/pkg/riso_rules_bg.wasm'))
+		module: readFileSync(join(__dirname, '../../../crates/raso-rules/pkg/raso_rules_bg.wasm'))
 	});
 });
 
@@ -78,7 +78,7 @@ describe.each(packs)('WASM khớp bộ test của đề %s', (id) => {
 });
 
 it('luật lỗi ném Error có danh sách RuleError', () => {
-	expect(() => new RulesHandle('schema: riso.rules/v1\ngame: x', '{}')).toThrow(/RULE_YAML/);
+	expect(() => new RulesHandle('schema: raso.rules/v1\ngame: x', '{}')).toThrow(/RULE_YAML/);
 });
 
 it('blankObservation tính được điểm 0', () => {
@@ -123,7 +123,7 @@ it('rank() xếp hạng các đội từ các biên bản', () => {
 
 it('đề con kế thừa đề cha qua parentsJson', () => {
 	const child = [
-		'schema: riso.rules/v1',
+		'schema: raso.rules/v1',
 		'extends: fgc-2026',
 		'game: fgc-2026-child',
 		'name: Child',

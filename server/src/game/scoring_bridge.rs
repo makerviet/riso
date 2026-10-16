@@ -1,10 +1,10 @@
-//! Dựng `riso_rules::Observation` từ trạng thái mô phỏng theo `observe.yaml`.
+//! Dựng `raso_rules::Observation` từ trạng thái mô phỏng theo `observe.yaml`.
 //!
 //! Mô phỏng chỉ *đo* (đếm vật phẩm trong vùng, đọc trạng thái leo); việc tính
-//! điểm hoàn toàn thuộc về `rules.yaml` qua `riso_rules::score`.
+//! điểm hoàn toàn thuộc về `rules.yaml` qua `raso_rules::score`.
 use indexmap::IndexMap;
-use riso_rules::schema::{InputDef, InputKind};
-use riso_rules::{InputValue, Observation, Rules};
+use raso_rules::schema::{InputDef, InputKind};
+use raso_rules::{InputValue, Observation, Rules};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 
@@ -282,7 +282,7 @@ pub fn build_observation(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use riso_rules::{NoParents, load, score};
+    use raso_rules::{NoParents, load, score};
 
     const RULES: &str = include_str!("../../../pkgs/games/fgc-2026/rules.yaml");
     const OBSERVE: &str = include_str!("../../../pkgs/games/fgc-2026/observe.yaml");
@@ -351,7 +351,7 @@ mod tests {
         let obs = build_observation(&spec, &rules, &fake, Some(&locked));
         assert_eq!(
             obs.sides["red"].robots[0]["climb"],
-            riso_rules::InputValue::Text("ZONE_3".into())
+            raso_rules::InputValue::Text("ZONE_3".into())
         );
     }
 

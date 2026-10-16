@@ -16,7 +16,7 @@
 	});
 </script>
 
-<svelte:head><title>RISO — Chấm điểm trọng tài</title></svelte:head>
+<svelte:head><title>RASO — Chấm điểm trọng tài</title></svelte:head>
 
 <main class="mx-auto max-w-2xl p-4">
 	<h1 class="mb-4 text-2xl font-bold">Chấm điểm trận thật</h1>

@@ -587,7 +587,7 @@ impl ObservationSource for SphereObservation<'_> {
     }
 }
 
-type ScoredObservation = (riso_rules::Observation, Arc<riso_rules::ScoreSheet>);
+type ScoredObservation = (raso_rules::Observation, Arc<raso_rules::ScoreSheet>);
 
 /// Tính điểm từ trạng thái mô phỏng hiện tại bằng `rules.yaml`. `locked` là
 /// trạng thái leo chốt lúc còi kết thúc. Lỗi thì giữ bảng điểm cũ và gắn cờ.
@@ -601,7 +601,7 @@ fn rescore(
         let source = runtime.observation_source(pack)?;
         build_observation(observe, rules, &source, locked)
     };
-    match riso_rules::score(rules, &observation) {
+    match raso_rules::score(rules, &observation) {
         Ok(sheet) => {
             let sheet = Arc::new(sheet);
             runtime.set_score(ScoreState::from_sheet(sheet.clone()));

@@ -1,4 +1,4 @@
-schema: riso.rules/v1
+schema: raso.rules/v1
 game: base-game
 name: Base
 version: 1.0.0

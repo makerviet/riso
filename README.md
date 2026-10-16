@@ -1,4 +1,4 @@
-# RISO — Robot Is Sport
+# RASO — Robotics is a Sport
 
 **Mô phỏng chiến thuật thi đấu robot cho học sinh** — đề FIRST Global Challenge các năm, FAnRoC (FPT Schools AI & Robotics Challenge) và các giải do cộng đồng đóng góp.
 
@@ -39,4 +39,4 @@ Muốn thêm một đề thi mới? Xem [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 Mã nguồn: [MIT](LICENSE). Xem [`NOTICE.md`](NOTICE.md) về nguồn gốc và thương hiệu.
 
-RISO là dự án cộng đồng độc lập, **không phải sản phẩm chính thức và không được FIRST®, FIRST Global hay FPT Schools bảo trợ**. Tên các giải đấu chỉ dùng để mô tả đề thi được mô phỏng.
+RASO là dự án cộng đồng độc lập, **không phải sản phẩm chính thức và không được FIRST®, FIRST Global hay FPT Schools bảo trợ**. Tên các giải đấu chỉ dùng để mô tả đề thi được mô phỏng.

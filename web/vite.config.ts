@@ -17,7 +17,7 @@ export default defineConfig({
 			adapter: adapter(),
 			preprocess: [mdsvex({ extensions: ['.svx', '.md'] })],
 			extensions: ['.svelte', '.svx', '.md'],
-			alias: { $riso: '../crates/riso-rules/pkg' }
+			alias: { $raso: '../crates/raso-rules/pkg' }
 		}),
 
 		paraglideVitePlugin({
