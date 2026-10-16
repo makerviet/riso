@@ -55,8 +55,8 @@
 	</nav>
 
 	<div class="z-10 flex max-w-3xl flex-col items-center gap-6 px-4">
-		<h1 class="font-daybreaker text-5xl font-black tracking-wide text-primary sm:text-6xl">RISO</h1>
-		<p class="-mt-4 text-xl font-bold tracking-wide text-primary sm:text-2xl">Robot Is Sport</p>
+		<h1 class="font-daybreaker text-5xl font-black tracking-wide text-primary sm:text-6xl">RASO</h1>
+		<p class="-mt-4 text-xl font-bold tracking-wide text-primary sm:text-2xl">Robotics is a Sport</p>
 		<p class="text-base leading-relaxed font-medium text-muted-foreground sm:text-xl">
 			Join Team Vietnam and the global robotics community to design, build, and simulate your 2026
 			Igniting Innovation robot in a fully synchronized, physics-driven multiplayer environment.
@@ -121,7 +121,7 @@
 				>
 			</div>
 			<p class="text-xs font-medium text-muted-foreground">
-				RISO is an open-source community project started by Team Vietnam FGC 2026 with MakerViet and
+				RASO is an open-source community project started by Team Vietnam FGC 2026 with MakerViet and
 				is <strong>NOT</strong>
 				affiliated with, sponsored by, or endorsed by <em>FIRST</em>® or <em>FIRST</em>® Global.
 			</p>

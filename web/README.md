@@ -25,12 +25,12 @@ Use an invitation code issued by an administrator to create an account. Authenti
 Deploy the API Worker, then deploy this worker with its `API` service binding configured in `wrangler.jsonc`. Regenerate configuration types whenever bindings change:
 
 ```sh
-(cd .. && ./scripts/build-rules-wasm.sh)   # WASM bộ máy luật → crates/riso-rules/pkg (bắt buộc trước build)
+(cd .. && ./scripts/build-rules-wasm.sh)   # WASM bộ máy luật → crates/raso-rules/pkg (bắt buộc trước build)
 pnpm gen
 pnpm check
 pnpm build
 ```
 
-`pnpm build` imports the rules engine from `$riso` (`../crates/riso-rules/pkg`). Build it first with `./scripts/build-rules-wasm.sh` from the repo root (needs Rust, the `wasm32-unknown-unknown` target and `wasm-pack`); the build stops early with a clear message if the package is missing.
+`pnpm build` imports the rules engine from `$raso` (`../crates/raso-rules/pkg`). Build it first with `./scripts/build-rules-wasm.sh` from the repo root (needs Rust, the `wasm32-unknown-unknown` target and `wasm-pack`); the build stops early with a clear message if the package is missing.
 
 Do not configure a public API URL for normal deployments—the browser should continue using its same-origin `/api` route.

@@ -1,18 +1,18 @@
-# RISO `riso-rules` — Kế hoạch thực hiện (Giai đoạn 1)
+# RASO `raso-rules` — Kế hoạch thực hiện (Giai đoạn 1)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Một bộ máy tính điểm khai báo bằng `rules.yaml`, dùng chung cho trận mô phỏng (server Rust) và trận thật (trang trọng tài chạy WASM), với hai đề mẫu FGC 2026 và FGC 2025.
 
-**Architecture:** Crate Rust thuần `crates/riso-rules` (đọc YAML → kế hoạch tính theo cấp robot → field → side → phạt → điểm cuối; công thức là biểu thức Rhai được tiền xử lý để mọi chữ số là `Decimal`). Server gọi crate trực tiếp, đo sân thành "biên bản" (`Observation`) theo `observe.yaml`. Trang `/referee/[gameId]` gọi bản WASM của cùng crate.
+**Architecture:** Crate Rust thuần `crates/raso-rules` (đọc YAML → kế hoạch tính theo cấp robot → field → side → phạt → điểm cuối; công thức là biểu thức Rhai được tiền xử lý để mọi chữ số là `Decimal`). Server gọi crate trực tiếp, đo sân thành "biên bản" (`Observation`) theo `observe.yaml`. Trang `/referee/[gameId]` gọi bản WASM của cùng crate.
 
 **Tech Stack:** Rust 2024, rhai 1.25 (`decimal`, `sync`), rust_decimal 1.43 (`maths`), serde_yaml_ng 0.10, indexmap 2, wasm-bindgen 0.2 + wasm-pack; SvelteKit 5 (runes), Hono (Cloudflare Worker), vitest.
 
-**Spec:** `docs/superpowers/specs/2026-10-15-riso-rules-design.md` — đọc cùng kế hoạch này.
+**Spec:** `docs/superpowers/specs/2026-10-15-raso-rules-design.md` — đọc cùng kế hoạch này.
 
 ## Global Constraints
 
-- Schema luật: `schema: riso.rules/v1`; đúng 2 liên minh (`sides.ids` dài 2).
+- Schema luật: `schema: raso.rules/v1`; đúng 2 liên minh (`sides.ids` dài 2).
 - Mọi số trong công thức và ô biên bản là `rust_decimal::Decimal`; chữ số ngoài chuỗi được đổi thành `__d("…")` trước khi biên dịch. **Không** bật feature `no_float` của Rhai (Cargo gộp feature với server, sẽ tắt số thực của `arena.rhai`/`robot.rhai`).
 - Rhai features đúng: `["decimal", "sync"]`; target wasm32 thêm `"wasm-bindgen"` và `getrandom = { version = "0.2", features = ["js"] }`.
 - Hộp cát: cấm `while`, `loop`, `for`, `fn`, `import`, `eval`, `print`, `debug`, `do`; tối đa 10.000 phép toán/công thức; độ sâu biểu thức tối đa 64.
@@ -39,20 +39,20 @@
 
 | File | Trách nhiệm |
 |---|---|
-| `crates/riso-rules/Cargo.toml` | Crate, features `cli`, `wasm` |
-| `crates/riso-rules/src/lib.rs` | `Rules`, `load`, `score`, `rank`, re-export |
-| `crates/riso-rules/src/error.rs` | `RuleError`, `ScoreError`, mã lỗi, `line_of` |
-| `crates/riso-rules/src/expr.rs` | `scan` (tiền xử lý + trích tên), `new_engine`, hàm có sẵn, `compile` |
-| `crates/riso-rules/src/schema.rs` | Kiểu `RulesFile` (serde) |
-| `crates/riso-rules/src/extends.rs` | `PackResolver`, `resolve` (kế thừa + override) |
-| `crates/riso-rules/src/graph.rs` | Kiểm tra phạm vi tên, sắp topo, `Plan` |
-| `crates/riso-rules/src/model.rs` | `Observation`, `ScoreSheet` và các kiểu con |
-| `crates/riso-rules/src/eval.rs` | `score()` |
-| `crates/riso-rules/src/rank.rs` | `rank()` |
-| `crates/riso-rules/src/pack.rs` | `DirResolver`, `check_pack` (không biên dịch cho wasm32) |
-| `crates/riso-rules/src/bin/riso.rs` | CLI |
-| `crates/riso-rules/src/wasm.rs` | `RulesHandle` (wasm-bindgen) |
-| `crates/riso-rules/tests/packs.rs` | Chạy test của mọi đề trong `pkgs/games` |
+| `crates/raso-rules/Cargo.toml` | Crate, features `cli`, `wasm` |
+| `crates/raso-rules/src/lib.rs` | `Rules`, `load`, `score`, `rank`, re-export |
+| `crates/raso-rules/src/error.rs` | `RuleError`, `ScoreError`, mã lỗi, `line_of` |
+| `crates/raso-rules/src/expr.rs` | `scan` (tiền xử lý + trích tên), `new_engine`, hàm có sẵn, `compile` |
+| `crates/raso-rules/src/schema.rs` | Kiểu `RulesFile` (serde) |
+| `crates/raso-rules/src/extends.rs` | `PackResolver`, `resolve` (kế thừa + override) |
+| `crates/raso-rules/src/graph.rs` | Kiểm tra phạm vi tên, sắp topo, `Plan` |
+| `crates/raso-rules/src/model.rs` | `Observation`, `ScoreSheet` và các kiểu con |
+| `crates/raso-rules/src/eval.rs` | `score()` |
+| `crates/raso-rules/src/rank.rs` | `rank()` |
+| `crates/raso-rules/src/pack.rs` | `DirResolver`, `check_pack` (không biên dịch cho wasm32) |
+| `crates/raso-rules/src/bin/raso.rs` | CLI |
+| `crates/raso-rules/src/wasm.rs` | `RulesHandle` (wasm-bindgen) |
+| `crates/raso-rules/tests/packs.rs` | Chạy test của mọi đề trong `pkgs/games` |
 | `pkgs/games/index.json` | Danh sách đề có luật |
 | `pkgs/games/fgc-2026/{rules.yaml,observe.yaml,tests/scoring/*.yaml}` | Đề FGC 2026 |
 | `pkgs/games/fgc-2025/{manifest.json,rules.yaml,tests/scoring/*.yaml}` | Đề FGC 2025 (chỉ luật) |
@@ -63,19 +63,19 @@
 | `api/src/routes/rules.ts` | `GET /api/rules`, `GET /api/rules/:id` |
 | `api/src/routes/game-packs.ts` | `runtime` trả `rules`, `observe` |
 | `web/src/routes/(public)/referee/...` | Trang trọng tài |
-| `web/src/lib/riso.ts` | Nạp WASM + tải luật |
+| `web/src/lib/raso.ts` | Nạp WASM + tải luật |
 | `web/src/routes/(game)/match/test-match/match-protocol.ts`, `ScoreSheetPanel.svelte` | Giải mã + hiển thị section 14 |
 | `.github/workflows/ci.yml` | Job `rules` |
 
 ---
 
-### Task 1: Crate `riso-rules` và lõi biểu thức
+### Task 1: Crate `raso-rules` và lõi biểu thức
 
 **Files:**
-- Create: `crates/riso-rules/Cargo.toml`
-- Create: `crates/riso-rules/src/lib.rs`
-- Create: `crates/riso-rules/src/expr.rs`
-- Modify: `.gitignore` (thêm `crates/riso-rules/target/`, `crates/riso-rules/pkg/`)
+- Create: `crates/raso-rules/Cargo.toml`
+- Create: `crates/raso-rules/src/lib.rs`
+- Create: `crates/raso-rules/src/expr.rs`
+- Modify: `.gitignore` (thêm `crates/raso-rules/target/`, `crates/raso-rules/pkg/`)
 
 **Interfaces:**
 - Produces:
@@ -90,22 +90,22 @@
 
 - [ ] **Step 1: Tạo crate**
 
-`crates/riso-rules/Cargo.toml`:
+`crates/raso-rules/Cargo.toml`:
 
 ```toml
 [package]
-name = "riso-rules"
+name = "raso-rules"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
-description = "RISO — bộ máy tính điểm khai báo bằng YAML cho giải robot"
+description = "RASO — bộ máy tính điểm khai báo bằng YAML cho giải robot"
 
 [lib]
 crate-type = ["rlib", "cdylib"]
 
 [[bin]]
-name = "riso"
-path = "src/bin/riso.rs"
+name = "raso"
+path = "src/bin/raso.rs"
 required-features = ["cli"]
 
 [features]
@@ -131,23 +131,23 @@ lto = "thin"
 opt-level = "s"
 ```
 
-`crates/riso-rules/src/lib.rs` (tạm thời):
+`crates/raso-rules/src/lib.rs` (tạm thời):
 
 ```rust
-//! RISO — bộ máy tính điểm khai báo bằng YAML.
+//! RASO — bộ máy tính điểm khai báo bằng YAML.
 pub mod expr;
 ```
 
 Thêm vào `.gitignore` ở gốc repo:
 
 ```
-crates/riso-rules/target/
-crates/riso-rules/pkg/
+crates/raso-rules/target/
+crates/raso-rules/pkg/
 ```
 
 - [ ] **Step 2: Viết test thất bại cho `scan`, số thập phân và hộp cát**
 
-Tạo `crates/riso-rules/src/expr.rs` chỉ với phần test (code chính viết ở Step 4):
+Tạo `crates/raso-rules/src/expr.rs` chỉ với phần test (code chính viết ở Step 4):
 
 ```rust
 #[cfg(test)]
@@ -296,7 +296,7 @@ mod tests {
 
 - [ ] **Step 3: Chạy test để thấy thất bại**
 
-Run: `cd crates/riso-rules && cargo test --lib expr`
+Run: `cd crates/raso-rules && cargo test --lib expr`
 Expected: lỗi biên dịch `cannot find function scan` / `new_engine`.
 
 - [ ] **Step 4: Viết phần code của `expr.rs`** (đặt phía trên khối `#[cfg(test)]`)
@@ -529,13 +529,13 @@ pub fn new_engine() -> Engine {
 Cập nhật `lib.rs`:
 
 ```rust
-//! RISO — bộ máy tính điểm khai báo bằng YAML.
+//! RASO — bộ máy tính điểm khai báo bằng YAML.
 pub mod expr;
 ```
 
 - [ ] **Step 5: Chạy test**
 
-Run: `cd crates/riso-rules && cargo test --lib expr`
+Run: `cd crates/raso-rules && cargo test --lib expr`
 Expected: 13 test PASS.
 
 Nếu `min`/`max` dạng `(Decimal, Decimal)` xung đột với hàm có sẵn của Rhai thì test `aggregate_builtins` sẽ đỏ; khi đó đổi tên đăng ký thành `min`/`max` chỉ cho `Array` và thêm `min2`/`max2`, đồng thời cập nhật spec mục 4.3.
@@ -547,8 +547,8 @@ Lần lượt: (a) bỏ dòng `out.push_str("__d(\"")…` (để chữ số nguy
 - [ ] **Step 7: Commit**
 
 ```bash
-git add crates/riso-rules .gitignore
-git commit -m "feat(rules): lõi biểu thức Decimal + hộp cát cho riso-rules"
+git add crates/raso-rules .gitignore
+git commit -m "feat(rules): lõi biểu thức Decimal + hộp cát cho raso-rules"
 ```
 
 ---
@@ -556,11 +556,11 @@ git commit -m "feat(rules): lõi biểu thức Decimal + hộp cát cho riso-rul
 ### Task 2: Schema `rules.yaml`, kế thừa và lỗi có số dòng
 
 **Files:**
-- Create: `crates/riso-rules/src/error.rs`
-- Create: `crates/riso-rules/src/schema.rs`
-- Create: `crates/riso-rules/src/extends.rs`
-- Create: `crates/riso-rules/tests/fixtures/base.yaml`, `crates/riso-rules/tests/fixtures/child.yaml`
-- Modify: `crates/riso-rules/src/lib.rs`
+- Create: `crates/raso-rules/src/error.rs`
+- Create: `crates/raso-rules/src/schema.rs`
+- Create: `crates/raso-rules/src/extends.rs`
+- Create: `crates/raso-rules/tests/fixtures/base.yaml`, `crates/raso-rules/tests/fixtures/child.yaml`
+- Modify: `crates/raso-rules/src/lib.rs`
 
 **Interfaces:**
 - Consumes: không.
@@ -577,10 +577,10 @@ git commit -m "feat(rules): lõi biểu thức Decimal + hộp cát cho riso-rul
 
 - [ ] **Step 1: Viết fixture kế thừa**
 
-`crates/riso-rules/tests/fixtures/base.yaml`:
+`crates/raso-rules/tests/fixtures/base.yaml`:
 
 ```yaml
-schema: riso.rules/v1
+schema: raso.rules/v1
 game: base-game
 name: Base
 version: 1.0.0
@@ -609,10 +609,10 @@ ranking:
     - { label: "Trận cao nhất", expr: "max(matches.team_score)" }
 ```
 
-`crates/riso-rules/tests/fixtures/child.yaml`:
+`crates/raso-rules/tests/fixtures/child.yaml`:
 
 ```yaml
-schema: riso.rules/v1
+schema: raso.rules/v1
 extends: base-game
 game: child-game
 name: Child
@@ -623,7 +623,7 @@ override:
   values.side.park_bonus: { expr: "7 * count(robots.parked)", label: "Đỗ xe (con)" }
 ```
 
-- [ ] **Step 2: Viết test thất bại** — tạo `crates/riso-rules/src/extends.rs` với khối test:
+- [ ] **Step 2: Viết test thất bại** — tạo `crates/raso-rules/src/extends.rs` với khối test:
 
 ```rust
 #[cfg(test)]
@@ -676,14 +676,14 @@ mod tests {
 
     #[test]
     fn yaml_syntax_error_has_line() {
-        let errors = parse_rules("schema: riso.rules/v1\ngame: [unclosed\n", &NoParents).unwrap_err();
+        let errors = parse_rules("schema: raso.rules/v1\ngame: [unclosed\n", &NoParents).unwrap_err();
         assert_eq!(errors[0].code, "RULE_YAML");
         assert!(errors[0].line.is_some());
     }
 
     #[test]
     fn wrong_schema_and_side_count_are_rejected() {
-        let wrong = BASE.replace("riso.rules/v1", "riso.rules/v9");
+        let wrong = BASE.replace("raso.rules/v1", "raso.rules/v9");
         assert_eq!(parse_rules(&wrong, &NoParents).unwrap_err()[0].code, "RULE_SCHEMA");
         let three = BASE.replace("ids: [red, blue]", "ids: [red, blue, green]");
         assert_eq!(parse_rules(&three, &NoParents).unwrap_err()[0].code, "RULE_SCHEMA");
@@ -720,7 +720,7 @@ Lưu ý: số dòng `18` ứng với fixture ở Step 1 (dòng `    park_bonus:`
 
 - [ ] **Step 3: Chạy để thấy thất bại**
 
-Run: `cd crates/riso-rules && cargo test --lib extends`
+Run: `cd crates/raso-rules && cargo test --lib extends`
 Expected: lỗi biên dịch (thiếu `parse_rules`, `MapResolver`…).
 
 - [ ] **Step 4: Viết `error.rs`**
@@ -1020,7 +1020,7 @@ use serde_yaml_ng::{Mapping, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub const MAX_EXTENDS_DEPTH: usize = 4;
-pub const SCHEMA: &str = "riso.rules/v1";
+pub const SCHEMA: &str = "raso.rules/v1";
 /// Tên dành riêng cho phạm vi công thức (spec mục 4.3).
 pub const RESERVED: [&str; 8] = [
     "robots", "all_robots", "field", "opponent", "matches", "fouls_received", "fouls_committed", "team_score",
@@ -1180,7 +1180,7 @@ pub fn parse_rules(yaml: &str, resolver: &dyn PackResolver) -> Result<RulesFile,
 Cập nhật `lib.rs`:
 
 ```rust
-//! RISO — bộ máy tính điểm khai báo bằng YAML.
+//! RASO — bộ máy tính điểm khai báo bằng YAML.
 pub mod error;
 pub mod expr;
 pub mod extends;
@@ -1192,7 +1192,7 @@ pub use extends::{MapResolver, NoParents, PackResolver};
 
 - [ ] **Step 7: Chạy test**
 
-Run: `cd crates/riso-rules && cargo test --lib`
+Run: `cd crates/raso-rules && cargo test --lib`
 Expected: tất cả test của `expr` và `extends` PASS.
 
 - [ ] **Step 8: Phá thử**
@@ -1202,7 +1202,7 @@ Expected: tất cả test của `expr` và `extends` PASS.
 - [ ] **Step 9: Commit**
 
 ```bash
-git add crates/riso-rules
+git add crates/raso-rules
 git commit -m "feat(rules): schema rules.yaml, kế thừa extends/override, lỗi có số dòng"
 ```
 
@@ -1211,8 +1211,8 @@ git commit -m "feat(rules): schema rules.yaml, kế thừa extends/override, l�
 ### Task 3: Phạm vi tên, sắp topo và biên dịch kế hoạch tính (`load`)
 
 **Files:**
-- Create: `crates/riso-rules/src/graph.rs`
-- Modify: `crates/riso-rules/src/lib.rs`
+- Create: `crates/raso-rules/src/graph.rs`
+- Modify: `crates/raso-rules/src/lib.rs`
 
 **Interfaces:**
 - Consumes: `expr::{new_engine, compile, Compiled, CompileError}`, `schema::*`, `extends::parse_rules`, `error::RuleError`.
@@ -1235,7 +1235,7 @@ Quy tắc phạm vi (spec mục 4.3), dùng nguyên văn trong code:
 | score | như side + `fouls_received`, `fouls_committed` | như side |
 | tiebreaker | — | `matches.<ô side / giá trị side / team_score>` |
 
-- [ ] **Step 1: Viết test thất bại** — tạo `crates/riso-rules/src/graph.rs` với khối test:
+- [ ] **Step 1: Viết test thất bại** — tạo `crates/raso-rules/src/graph.rs` với khối test:
 
 ```rust
 #[cfg(test)]
@@ -1328,7 +1328,7 @@ mod tests {
 
 - [ ] **Step 2: Chạy để thấy thất bại**
 
-Run: `cd crates/riso-rules && cargo test --lib graph`
+Run: `cd crates/raso-rules && cargo test --lib graph`
 Expected: lỗi biên dịch (thiếu `load`).
 
 - [ ] **Step 3: Viết code `graph.rs`** (phía trên khối test)
@@ -1604,7 +1604,7 @@ Ghi chú cho người thực thi: trong `topo`, khối kiểm tra tự tham chi�
 - [ ] **Step 4: Thêm `Rules` và `load` vào `lib.rs`**
 
 ```rust
-//! RISO — bộ máy tính điểm khai báo bằng YAML.
+//! RASO — bộ máy tính điểm khai báo bằng YAML.
 pub mod error;
 pub mod expr;
 pub mod extends;
@@ -1671,7 +1671,7 @@ fn _assert_send_sync() {
 
 - [ ] **Step 5: Chạy test**
 
-Run: `cd crates/riso-rules && cargo test --lib`
+Run: `cd crates/raso-rules && cargo test --lib`
 Expected: PASS toàn bộ (expr + extends + graph).
 
 - [ ] **Step 6: Phá thử**
@@ -1681,7 +1681,7 @@ Expected: PASS toàn bộ (expr + extends + graph).
 - [ ] **Step 7: Commit**
 
 ```bash
-git add crates/riso-rules
+git add crates/raso-rules
 git commit -m "feat(rules): kiểm tra phạm vi tên, sắp topo, load() biên dịch kế hoạch tính"
 ```
 
@@ -1690,9 +1690,9 @@ git commit -m "feat(rules): kiểm tra phạm vi tên, sắp topo, load() biên 
 ### Task 4: Biên bản, bảng điểm và `score()`
 
 **Files:**
-- Create: `crates/riso-rules/src/model.rs`
-- Create: `crates/riso-rules/src/eval.rs`
-- Modify: `crates/riso-rules/src/lib.rs`
+- Create: `crates/raso-rules/src/model.rs`
+- Create: `crates/raso-rules/src/eval.rs`
+- Modify: `crates/raso-rules/src/lib.rs`
 
 **Interfaces:**
 - Consumes: `Rules`, `graph::{Plan, Node}`, `expr::{to_dec, format_dynamic}`, `schema::*`.
@@ -1712,7 +1712,7 @@ git commit -m "feat(rules): kiểm tra phạm vi tên, sắp topo, load() biên 
 
 Thứ tự tính (spec mục 4.3): robot (từng robot) → field → side (từng liên minh) → phạt (`goes_to`) → `score` → làm tròn → thẻ.
 
-- [ ] **Step 1: Viết test thất bại** — tạo `crates/riso-rules/src/eval.rs` với khối test:
+- [ ] **Step 1: Viết test thất bại** — tạo `crates/raso-rules/src/eval.rs` với khối test:
 
 ```rust
 #[cfg(test)]
@@ -1857,7 +1857,7 @@ mod tests {
 
 - [ ] **Step 2: Chạy để thấy thất bại**
 
-Run: `cd crates/riso-rules && cargo test --lib eval`
+Run: `cd crates/raso-rules && cargo test --lib eval`
 Expected: lỗi biên dịch (thiếu `model`, `score`).
 
 - [ ] **Step 3: Viết `model.rs`**
@@ -2355,7 +2355,7 @@ pub use model::{FoulLine, InputValue, LineItem, Observation, ScoreSheet, SideObs
 
 - [ ] **Step 5: Chạy test**
 
-Run: `cd crates/riso-rules && cargo test --lib`
+Run: `cd crates/raso-rules && cargo test --lib`
 Expected: PASS toàn bộ.
 
 - [ ] **Step 6: Phá thử**
@@ -2365,7 +2365,7 @@ Expected: PASS toàn bộ.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add crates/riso-rules
+git add crates/raso-rules
 git commit -m "feat(rules): biên bản, bảng điểm chi tiết và score() với phạt, thẻ, làm tròn"
 ```
 
@@ -2373,8 +2373,8 @@ git commit -m "feat(rules): biên bản, bảng điểm chi tiết và score() v
 ### Task 5: Xếp hạng `rank()`
 
 **Files:**
-- Create: `crates/riso-rules/src/rank.rs`
-- Modify: `crates/riso-rules/src/lib.rs`
+- Create: `crates/raso-rules/src/rank.rs`
+- Modify: `crates/raso-rules/src/lib.rs`
 
 **Interfaces:**
 - Consumes: `Rules`, `model::{ScoreSheet, TeamResult}`, `graph::Plan.tiebreakers`, `expr::to_dec`, `schema::{Aggregate, FinalTiebreak}`.
@@ -2393,7 +2393,7 @@ Quy tắc (spec mục 4.5):
 - Tiebreaker tính trên `matches.<tên>` chỉ gồm các trận được tính; so sánh giảm dần.
 - `final_tiebreak: draw` → hàng bằng nhau mọi tiêu chí dùng chung số hạng và `tied = true`; `team_number` → so `team` tăng dần (số nếu parse được, không thì chuỗi).
 
-- [ ] **Step 1: Viết test thất bại** — tạo `crates/riso-rules/src/rank.rs` với khối test:
+- [ ] **Step 1: Viết test thất bại** — tạo `crates/raso-rules/src/rank.rs` với khối test:
 
 ```rust
 #[cfg(test)]
@@ -2481,7 +2481,7 @@ mod tests {
 
 - [ ] **Step 2: Chạy để thấy thất bại**
 
-Run: `cd crates/riso-rules && cargo test --lib rank`
+Run: `cd crates/raso-rules && cargo test --lib rank`
 Expected: lỗi biên dịch.
 
 - [ ] **Step 3: Viết code `rank.rs`** (phía trên khối test)
@@ -2643,7 +2643,7 @@ Cập nhật `lib.rs`: `mod rank;` và `pub use rank::{MatchResult, StandingRow,
 
 - [ ] **Step 4: Chạy test**
 
-Run: `cd crates/riso-rules && cargo test --lib`
+Run: `cd crates/raso-rules && cargo test --lib`
 Expected: PASS toàn bộ.
 
 - [ ] **Step 5: Phá thử**
@@ -2653,22 +2653,22 @@ Expected: PASS toàn bộ.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add crates/riso-rules
+git add crates/raso-rules
 git commit -m "feat(rules): rank() với keep_best, drop_lowest + not_if, tiebreaker"
 ```
 
 ---
 
-### Task 6: Đề FGC 2026, trình chạy test của đề và CLI `riso`
+### Task 6: Đề FGC 2026, trình chạy test của đề và CLI `raso`
 
 **Files:**
-- Create: `crates/riso-rules/src/pack.rs`
-- Create: `crates/riso-rules/src/bin/riso.rs`
-- Create: `crates/riso-rules/tests/packs.rs`
+- Create: `crates/raso-rules/src/pack.rs`
+- Create: `crates/raso-rules/src/bin/raso.rs`
+- Create: `crates/raso-rules/tests/packs.rs`
 - Create: `pkgs/games/index.json`
 - Create: `pkgs/games/fgc-2026/rules.yaml`
 - Create: `pkgs/games/fgc-2026/tests/scoring/01-basic.yaml` … `08-observation-error.yaml`
-- Modify: `crates/riso-rules/src/lib.rs`
+- Modify: `crates/raso-rules/src/lib.rs`
 
 **Interfaces:**
 - Consumes: `load`, `score`, `rank`, `MapResolver`/`PackResolver`, `model::*`.
@@ -2692,7 +2692,7 @@ expect:                       # hoặc expect_error: OBS_RANGE
       teams: { VIE: 155, LAO: 0 }                    # tuỳ chọn
 ```
 
-- [ ] **Step 1: Viết `pkgs/games/fgc-2026/rules.yaml`** — chép nguyên văn khối YAML ở spec mục 6.1 (từ `schema: riso.rules/v1` đến hết `open_questions`).
+- [ ] **Step 1: Viết `pkgs/games/fgc-2026/rules.yaml`** — chép nguyên văn khối YAML ở spec mục 6.1 (từ `schema: raso.rules/v1` đến hết `open_questions`).
 
 - [ ] **Step 2: Viết 8 file test** trong `pkgs/games/fgc-2026/tests/scoring/` (đã tính tay bằng `Decimal`, xem spec phụ lục A):
 
@@ -2922,10 +2922,10 @@ expect_error: OBS_RANGE
 
 (`fgc-2025` được tạo ở Task 7; test ở Step 3 chỉ duyệt thư mục có `rules.yaml` nên không lỗi khi chưa có.)
 
-- [ ] **Step 3: Viết test tích hợp thất bại** `crates/riso-rules/tests/packs.rs`:
+- [ ] **Step 3: Viết test tích hợp thất bại** `crates/raso-rules/tests/packs.rs`:
 
 ```rust
-use riso_rules::pack::check_pack;
+use raso_rules::pack::check_pack;
 use std::path::PathBuf;
 
 fn games_root() -> PathBuf {
@@ -2959,7 +2959,7 @@ fn fgc_2026_has_eight_cases() {
 }
 ```
 
-Run: `cd crates/riso-rules && cargo test --test packs`
+Run: `cd crates/raso-rules && cargo test --test packs`
 Expected: lỗi biên dịch (thiếu `pack`).
 
 - [ ] **Step 4: Viết `pack.rs`**
@@ -3141,12 +3141,12 @@ Cập nhật `lib.rs`:
 pub mod pack;
 ```
 
-- [ ] **Step 5: Viết CLI `src/bin/riso.rs`**
+- [ ] **Step 5: Viết CLI `src/bin/raso.rs`**
 
 ```rust
-//! riso check <thư-mục-đề>... | riso score <rules.yaml> <biên-bản.yaml> [--json] | riso rank <rules.yaml> <kết-quả.json>...
-use riso_rules::pack::{DirResolver, check_pack};
-use riso_rules::{MatchResult, Observation, load, rank, score};
+//! raso check <thư-mục-đề>... | raso score <rules.yaml> <biên-bản.yaml> [--json] | raso rank <rules.yaml> <kết-quả.json>...
+use raso_rules::pack::{DirResolver, check_pack};
+use raso_rules::{MatchResult, Observation, load, rank, score};
 use std::path::Path;
 use std::process::ExitCode;
 
@@ -3236,18 +3236,18 @@ fn main() -> ExitCode {
             }
         }
         _ => {
-            eprintln!("Cách dùng:\n  riso check <thư-mục-đề>...\n  riso score <rules.yaml> <biên-bản.yaml> [--json]\n  riso rank <rules.yaml> <kết-quả.json>...");
+            eprintln!("Cách dùng:\n  raso check <thư-mục-đề>...\n  raso score <rules.yaml> <biên-bản.yaml> [--json]\n  raso rank <rules.yaml> <kết-quả.json>...");
             ExitCode::FAILURE
         }
     }
 }
 ```
 
-Ghi chú: `riso rank` đọc file JSON dạng `MatchResult` (`{ "match_id": "...", "sheet": {...} }`).
+Ghi chú: `raso rank` đọc file JSON dạng `MatchResult` (`{ "match_id": "...", "sheet": {...} }`).
 
 - [ ] **Step 6: Chạy test và CLI**
 
-Run: `cd crates/riso-rules && cargo test && cargo run --features cli --bin riso -- check ../../pkgs/games/fgc-2026`
+Run: `cd crates/raso-rules && cargo test && cargo run --features cli --bin raso -- check ../../pkgs/games/fgc-2026`
 Expected: mọi test PASS; CLI in 8 dòng `✓ fgc-2026 / 0X-....yaml`, thoát mã 0.
 
 Nếu một ca trong `tests/scoring` đỏ, **không sửa số mong đợi** trước khi tính tay lại theo spec phụ lục A; số trong kế hoạch đã được kiểm bằng `decimal.Decimal` của Python.
@@ -3259,8 +3259,8 @@ Nếu một ca trong `tests/scoring` đỏ, **không sửa số mong đợi** tr
 - [ ] **Step 8: Commit**
 
 ```bash
-git add crates/riso-rules pkgs/games/index.json pkgs/games/fgc-2026/rules.yaml pkgs/games/fgc-2026/tests/scoring
-git commit -m "feat(rules): đề FGC 2026 + 8 ca test, trình chạy test đề và CLI riso"
+git add crates/raso-rules pkgs/games/index.json pkgs/games/fgc-2026/rules.yaml pkgs/games/fgc-2026/tests/scoring
+git commit -m "feat(rules): đề FGC 2026 + 8 ca test, trình chạy test đề và CLI raso"
 ```
 
 ---
@@ -3271,13 +3271,13 @@ git commit -m "feat(rules): đề FGC 2026 + 8 ca test, trình chạy test đề
 - Create: `pkgs/games/fgc-2025/manifest.json`
 - Create: `pkgs/games/fgc-2025/rules.yaml`
 - Create: `pkgs/games/fgc-2025/tests/scoring/01-even-level4.yaml` … `09-coop5.yaml`
-- Modify: `crates/riso-rules/tests/packs.rs`
+- Modify: `crates/raso-rules/tests/packs.rs`
 
 **Interfaces:**
 - Consumes: `check_pack` (Task 6).
 - Produces: đề `fgc-2025` được `index.json` (Task 6) tham chiếu.
 
-- [ ] **Step 1: Viết test thất bại** — thêm vào `crates/riso-rules/tests/packs.rs`:
+- [ ] **Step 1: Viết test thất bại** — thêm vào `crates/raso-rules/tests/packs.rs`:
 
 ```rust
 #[test]
@@ -3288,7 +3288,7 @@ fn fgc_2025_has_nine_cases() {
 }
 ```
 
-Run: `cd crates/riso-rules && cargo test --test packs fgc_2025`
+Run: `cd crates/raso-rules && cargo test --test packs fgc_2025`
 Expected: FAIL (không đọc được `fgc-2025/rules.yaml`).
 
 - [ ] **Step 2: Viết `manifest.json` và `rules.yaml`**
@@ -3359,7 +3359,7 @@ expect:
 
 - [ ] **Step 4: Chạy test**
 
-Run: `cd crates/riso-rules && cargo test --test packs && cargo run --features cli --bin riso -- check ../../pkgs/games/fgc-2025`
+Run: `cd crates/raso-rules && cargo test --test packs && cargo run --features cli --bin raso -- check ../../pkgs/games/fgc-2025`
 Expected: PASS; CLI in 9 dòng `✓`.
 
 - [ ] **Step 5: Phá thử**
@@ -3369,7 +3369,7 @@ Expected: PASS; CLI in 9 dòng `✓`.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add pkgs/games/fgc-2025 crates/riso-rules/tests/packs.rs
+git add pkgs/games/fgc-2025 crates/raso-rules/tests/packs.rs
 git commit -m "feat(rules): đề FGC 2025 Eco Equilibrium + 9 ca test ranh giới σ"
 ```
 
@@ -3378,16 +3378,16 @@ git commit -m "feat(rules): đề FGC 2025 Eco Equilibrium + 9 ca test ranh gi�
 ### Task 8: Bản WASM và test tương đương trên Node
 
 **Files:**
-- Create: `crates/riso-rules/src/wasm.rs`
-- Modify: `crates/riso-rules/src/lib.rs`
+- Create: `crates/raso-rules/src/wasm.rs`
+- Modify: `crates/raso-rules/src/lib.rs`
 - Create: `scripts/build-rules-wasm.sh`
 - Modify: `web/package.json` (devDependencies `vitest`, `yaml`; script `test:rules`)
 - Create: `web/vitest.config.ts`
-- Create: `web/src/lib/riso.parity.test.ts`
+- Create: `web/src/lib/raso.parity.test.ts`
 
 **Interfaces:**
 - Consumes: `load`, `score`, `rank`, `MapResolver`, `Rules::blank_observation`.
-- Produces (JS, từ `crates/riso-rules/pkg/riso_rules.js`):
+- Produces (JS, từ `crates/raso-rules/pkg/raso_rules.js`):
   - `class RulesHandle { constructor(yaml: string, parentsJson: string); describe(): string; blankObservation(): string; score(observationJson: string): string; rank(resultsJson: string): string }`
   - `describe()` trả JSON của `RulesFile` đã kế thừa.
   - `score()` trả `{"ok":true,"sheet":{...}}` hoặc `{"ok":false,"errors":[...]}`; `rank()` tương tự với `standings`.
@@ -3467,22 +3467,22 @@ pub mod wasm;
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
-cd "$(dirname "$0")/../crates/riso-rules"
-wasm-pack build --release --target web --out-dir pkg --out-name riso_rules -- --features wasm
-ls -la pkg/riso_rules_bg.wasm
+cd "$(dirname "$0")/../crates/raso-rules"
+wasm-pack build --release --target web --out-dir pkg --out-name raso_rules -- --features wasm
+ls -la pkg/raso_rules_bg.wasm
 ```
 
 Run: `chmod +x scripts/build-rules-wasm.sh && ./scripts/build-rules-wasm.sh`
-Expected: tạo `crates/riso-rules/pkg/riso_rules.js`, `riso_rules_bg.wasm` (khoảng 1–2 MB).
+Expected: tạo `crates/raso-rules/pkg/raso_rules.js`, `raso_rules_bg.wasm` (khoảng 1–2 MB).
 
-- [ ] **Step 3: Viết test tương đương thất bại** `web/src/lib/riso.parity.test.ts`:
+- [ ] **Step 3: Viết test tương đương thất bại** `web/src/lib/raso.parity.test.ts`:
 
 ```ts
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, beforeAll } from 'vitest';
 import { parse } from 'yaml';
-import { initSync, RulesHandle } from '../../../crates/riso-rules/pkg/riso_rules.js';
+import { initSync, RulesHandle } from '../../../crates/raso-rules/pkg/raso_rules.js';
 
 const gamesRoot = join(__dirname, '../../../pkgs/games');
 
@@ -3494,7 +3494,7 @@ type Case = {
 };
 
 beforeAll(() => {
-	initSync({ module: readFileSync(join(__dirname, '../../../crates/riso-rules/pkg/riso_rules_bg.wasm')) });
+	initSync({ module: readFileSync(join(__dirname, '../../../crates/raso-rules/pkg/raso_rules_bg.wasm')) });
 });
 
 const packs = readdirSync(gamesRoot).filter((id) => existsSync(join(gamesRoot, id, 'rules.yaml')));
@@ -3520,7 +3520,7 @@ describe.each(packs)('WASM khớp bộ test của đề %s', (id) => {
 });
 
 it('luật lỗi ném Error có danh sách RuleError', () => {
-	expect(() => new RulesHandle('schema: riso.rules/v1\ngame: x', '{}')).toThrow(/RULE_YAML/);
+	expect(() => new RulesHandle('schema: raso.rules/v1\ngame: x', '{}')).toThrow(/RULE_YAML/);
 });
 
 it('blankObservation tính được điểm 0', () => {
@@ -3541,7 +3541,7 @@ export default defineConfig({
 });
 ```
 
-Thêm vào `web/package.json`: `"devDependencies"` có `"vitest": "^3.2.4"` và `"yaml": "^2.8.1"`; `"scripts"` có `"test:rules": "vitest run src/lib/riso.parity.test.ts"`.
+Thêm vào `web/package.json`: `"devDependencies"` có `"vitest": "^3.2.4"` và `"yaml": "^2.8.1"`; `"scripts"` có `"test:rules": "vitest run src/lib/raso.parity.test.ts"`.
 
 Run: `cd web && pnpm install && pnpm test:rules`
 Expected: FAIL nếu chưa build WASM; PASS sau Step 2. Chạy lại sau khi build để xác nhận PASS (17 ca + 2 test lẻ).
@@ -3555,7 +3555,7 @@ Trong `wasm.rs`, đổi `score(&self.rules, &obs)` sang một `Observation` rỗ
 - [ ] **Step 5: Commit**
 
 ```bash
-git add crates/riso-rules/src scripts/build-rules-wasm.sh web/package.json web/pnpm-lock.yaml web/vitest.config.ts web/src/lib/riso.parity.test.ts
+git add crates/raso-rules/src scripts/build-rules-wasm.sh web/package.json web/pnpm-lock.yaml web/vitest.config.ts web/src/lib/raso.parity.test.ts
 git commit -m "feat(rules): bản WASM RulesHandle + test tương đương trên Node"
 ```
 
@@ -3563,7 +3563,7 @@ git commit -m "feat(rules): bản WASM RulesHandle + test tương đương trên
 ### Task 9: Server — `observe.yaml` và dựng biên bản từ mô phỏng
 
 **Files:**
-- Modify: `server/Cargo.toml` (thêm `riso-rules = { path = "../crates/riso-rules" }`, `serde_yaml_ng = "0.10"`, đổi `rhai = "1.25.1"` thành `rhai = { version = "1.25.1", features = ["decimal", "sync"] }`)
+- Modify: `server/Cargo.toml` (thêm `raso-rules = { path = "../crates/raso-rules" }`, `serde_yaml_ng = "0.10"`, đổi `rhai = "1.25.1"` thành `rhai = { version = "1.25.1", features = ["decimal", "sync"] }`)
 - Create: `server/src/game/scoring_bridge.rs`
 - Modify: `server/src/game/mod.rs` (thêm `pub mod scoring_bridge;`)
 - Create: `pkgs/games/fgc-2026/observe.yaml`
@@ -3571,7 +3571,7 @@ git commit -m "feat(rules): bản WASM RulesHandle + test tương đương trên
 - Modify: `server/src/game/sphere_runtime/tests.rs:368-420` (viết lại test chấm điểm thành test đếm)
 
 **Interfaces:**
-- Consumes: `riso_rules::{Rules, Observation, InputValue, SideObservation}`, `Rules::blank_observation`, `rules.file.inputs`.
+- Consumes: `raso_rules::{Rules, Observation, InputValue, SideObservation}`, `Rules::blank_observation`, `rules.file.inputs`.
 - Produces:
   - `pub trait ObservationSource { fn object_kind(&self) -> Option<String>; fn count_in_target(&self, target: &str, released_by: Option<&str>) -> Option<i64>; fn robot_brace_labels(&self) -> Vec<(String, String)>; }` — `count_in_target` trả `None` khi target không tồn tại hoặc `enabled: false`; `robot_brace_labels` trả `(liên_minh_viết_thường, nhãn)` với nhãn ∈ `none | contact | zone1 | zone2 | zone3`.
   - `pub struct ObserveSpec { entries: Vec<(Level, String, Probe)> }`
@@ -3595,7 +3595,7 @@ robot.lifted_by_partner: { not_simulated: false }
 #[cfg(test)]
 mod tests {
     use super::*;
-    use riso_rules::{NoParents, load, score};
+    use raso_rules::{NoParents, load, score};
 
     const RULES: &str = include_str!("../../../pkgs/games/fgc-2026/rules.yaml");
     const OBSERVE: &str = include_str!("../../../pkgs/games/fgc-2026/observe.yaml");
@@ -3645,7 +3645,7 @@ mod tests {
         let fake = Fake { red_su: 10, blue_su: 0, robots: vec![] };
         let locked = vec![("red".to_string(), "zone3".to_string())];
         let obs = build_observation(&spec, &rules, &fake, Some(&locked));
-        assert_eq!(obs.sides["red"].robots[0]["climb"], riso_rules::InputValue::Text("ZONE_3".into()));
+        assert_eq!(obs.sides["red"].robots[0]["climb"], raso_rules::InputValue::Text("ZONE_3".into()));
     }
 
     #[test]
@@ -3672,9 +3672,9 @@ Expected: lỗi biên dịch.
 - [ ] **Step 3: Viết code `scoring_bridge.rs`** (phía trên khối test)
 
 ```rust
-//! Dựng `riso_rules::Observation` từ trạng thái mô phỏng theo `observe.yaml`.
-use riso_rules::schema::{InputDef, InputKind};
-use riso_rules::{InputValue, Observation, Rules};
+//! Dựng `raso_rules::Observation` từ trạng thái mô phỏng theo `observe.yaml`.
+use raso_rules::schema::{InputDef, InputKind};
+use raso_rules::{InputValue, Observation, Rules};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 
@@ -3857,7 +3857,7 @@ pub fn build_observation(
 }
 ```
 
-Ghi chú: biên bản luôn có đúng `sides.teams` robot vì xuất phát từ `blank_observation`; robot thừa trong `robot_brace_labels` bị bỏ qua, robot thiếu giữ giá trị trống. Nếu `indexmap` chưa có trong `server/Cargo.toml`, dùng `riso_rules::schema` re-export hoặc thêm `indexmap = "2"`.
+Ghi chú: biên bản luôn có đúng `sides.teams` robot vì xuất phát từ `blank_observation`; robot thừa trong `robot_brace_labels` bị bỏ qua, robot thiếu giữ giá trị trống. Nếu `indexmap` chưa có trong `server/Cargo.toml`, dùng `raso_rules::schema` re-export hoặc thêm `indexmap = "2"`.
 
 - [ ] **Step 4: Thay `sphere_runtime/scoring.rs` bằng phép đo**
 
@@ -3974,7 +3974,7 @@ git commit -m "feat(server): dựng biên bản từ mô phỏng theo observe.ya
 
 ---
 
-### Task 10: Server — nối `riso-rules` vào vòng lặp trận, gỡ điểm viết cứng
+### Task 10: Server — nối `raso-rules` vào vòng lặp trận, gỡ điểm viết cứng
 
 **Files:**
 - Modify: `server/src/game/pack_loader.rs` (manifest `rules`, snapshot `rules`/`observe`, `GamePackMetadata.rules`/`observe`)
@@ -3987,12 +3987,12 @@ git commit -m "feat(server): dựng biên bản từ mô phỏng theo observe.ya
 - Modify: `pkgs/games/fgc-2026/manifest.json` (`scripts` bỏ `scoring`, `penalties`; thêm `"rules": { "scoring": "rules.yaml", "observe": "observe.yaml" }`)
 
 **Interfaces:**
-- Consumes: `scoring_bridge::{parse_observe, build_observation, ObservationSource, ObserveSpec}`, `riso_rules::{load, score, MapResolver, Rules, ScoreSheet}`.
+- Consumes: `scoring_bridge::{parse_observe, build_observation, ObservationSource, ObserveSpec}`, `raso_rules::{load, score, MapResolver, Rules, ScoreSheet}`.
 - Produces:
   - `GamePackManifest.rules: Option<PackRulesManifest>` với `pub struct PackRulesManifest { pub scoring: String, #[serde(default)] pub observe: Option<String> }`
   - `GamePackRuntimeSnapshot.rules: BTreeMap<String, String>` (id đề → YAML, gồm đề chính và đề cha) và `observe: Option<String>` (cả hai `#[serde(default)]`)
-  - `GamePackMetadata.rules: Option<Arc<riso_rules::Rules>>`, `GamePackMetadata.observe: Option<Arc<ObserveSpec>>` (`#[serde(skip)]`)
-  - `ScoreState { pub blue_score: i32, pub red_score: i32, pub global_score: i32, pub breakdown: HashMap<String, i32>, pub sheet: Option<Arc<riso_rules::ScoreSheet>>, pub scoring_error: Option<String> }` (`Default`)
+  - `GamePackMetadata.rules: Option<Arc<raso_rules::Rules>>`, `GamePackMetadata.observe: Option<Arc<ObserveSpec>>` (`#[serde(skip)]`)
+  - `ScoreState { pub blue_score: i32, pub red_score: i32, pub global_score: i32, pub breakdown: HashMap<String, i32>, pub sheet: Option<Arc<raso_rules::ScoreSheet>>, pub scoring_error: Option<String> }` (`Default`)
   - `MatchCompletionReport.result` có thêm `observation`, `scoreSheet`, `rulesVersion`.
   - `impl ObservationSource for SphereRuntime` (giữ `triggers` qua một struct bọc `SphereObservation<'a> { runtime: &'a SphereRuntime, triggers: &'a [FieldTrigger] }`).
 
@@ -4012,7 +4012,7 @@ fn fgc_2026_pack_loads_rules_and_observe() {
 fn invalid_rules_reject_the_pack() {
     let loader = PackLoader::new("0.1.0");
     let mut snapshot = fixture_snapshot(); // helper hiện có trong file test; nếu chưa có, dựng từ load_pack rồi sửa
-    snapshot.rules.insert("fgc-2026".into(), "schema: riso.rules/v1\ngame: fgc-2026".into());
+    snapshot.rules.insert("fgc-2026".into(), "schema: raso.rules/v1\ngame: fgc-2026".into());
     let error = loader.load_runtime_snapshot(snapshot).unwrap_err();
     assert!(error.to_string().contains("RULE_YAML"), "{error}");
 }
@@ -4040,7 +4040,7 @@ pub struct PackRulesManifest {
 
 - `GamePackManifest`: `#[serde(default)] pub rules: Option<PackRulesManifest>,`
 - `GamePackRuntimeSnapshot`: `#[serde(default)] pub rules: BTreeMap<String, String>, #[serde(default)] pub observe: Option<String>,`
-- `GamePackMetadata`: `#[serde(skip)] pub rules: Option<Arc<riso_rules::Rules>>, #[serde(skip)] pub observe: Option<Arc<crate::game::scoring_bridge::ObserveSpec>>,` (bỏ `Clone`/`Debug` derive nếu `Rules` không implement; khi đó implement `Debug` tay bỏ qua hai trường này).
+- `GamePackMetadata`: `#[serde(skip)] pub rules: Option<Arc<raso_rules::Rules>>, #[serde(skip)] pub observe: Option<Arc<crate::game::scoring_bridge::ObserveSpec>>,` (bỏ `Clone`/`Debug` derive nếu `Rules` không implement; khi đó implement `Debug` tay bỏ qua hai trường này).
 
 Trong `load_runtime_snapshot`, trước `Ok(GamePackMetadata { ... })`:
 
@@ -4051,7 +4051,7 @@ let (rules, observe) = match &snapshot.manifest.rules {
         let yaml = snapshot.rules.get(&snapshot.manifest.id).ok_or_else(|| {
             GameError::ManifestParseError(format!("Runtime snapshot thiếu {} của đề {}", paths.scoring, snapshot.manifest.id))
         })?;
-        let rules = riso_rules::load(yaml, &riso_rules::MapResolver(snapshot.rules.clone().into_iter().collect()))
+        let rules = raso_rules::load(yaml, &raso_rules::MapResolver(snapshot.rules.clone().into_iter().collect()))
             .map_err(|errors| GameError::ScriptCompilationError(errors.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n")))?;
         let observe = match &snapshot.observe {
             Some(text) => Some(Arc::new(
@@ -4103,12 +4103,12 @@ pub struct ScoreState {
     pub red_score: i32,
     pub global_score: i32,
     pub breakdown: HashMap<String, i32>,
-    pub sheet: Option<std::sync::Arc<riso_rules::ScoreSheet>>,
+    pub sheet: Option<std::sync::Arc<raso_rules::ScoreSheet>>,
     pub scoring_error: Option<String>,
 }
 
 impl ScoreState {
-    pub fn from_sheet(sheet: std::sync::Arc<riso_rules::ScoreSheet>) -> Self {
+    pub fn from_sheet(sheet: std::sync::Arc<raso_rules::ScoreSheet>) -> Self {
         let side = |id: &str| sheet.sides.get(id).map(|s| s.score as i32).unwrap_or(0);
         let mut breakdown = HashMap::new();
         for (id, s) in &sheet.sides {
@@ -4123,7 +4123,7 @@ impl ScoreState {
 }
 ```
 
-(thêm `rust_decimal = "1.43"` vào `server/Cargo.toml` nếu cần `try_into`; hoặc dùng `riso_rules` re-export nếu có.)
+(thêm `rust_decimal = "1.43"` vào `server/Cargo.toml` nếu cần `try_into`; hoặc dùng `raso_rules` re-export nếu có.)
 - `match_registry.rs`: xoá các hàm `apply_score`, `set_scoring_enabled`, `brace_multipliers`, `apply_endgame_brace_multipliers` trong `RuntimeBackend`; xoá `brace_score_applied`, `endgame_brace_multipliers`, nhánh `rules.on_trigger_enter` (dòng ~1144-1158) và khối `apply_endgame_brace_multipliers` (dòng ~1256-1266). Biến `rules` (RhaiEngine) trong luồng trận vẫn dùng cho kịch bản khác thì giữ, không thì xoá.
 
 - [ ] **Step 4: Thêm `ObservationSource` cho runtime** — trong `match_registry.rs`:
@@ -4168,13 +4168,13 @@ impl RuntimeBackend {
 }
 
 /// Tính điểm từ trạng thái hiện tại. Lỗi thì giữ bảng điểm cũ và gắn cờ.
-fn rescore(runtime: &mut RuntimeBackend, pack: &GamePackMetadata, locked: Option<&[(String, String)]>) -> Option<(riso_rules::Observation, Arc<riso_rules::ScoreSheet>)> {
+fn rescore(runtime: &mut RuntimeBackend, pack: &GamePackMetadata, locked: Option<&[(String, String)]>) -> Option<(raso_rules::Observation, Arc<raso_rules::ScoreSheet>)> {
     let (rules, observe) = (pack.rules.as_ref()?, pack.observe.as_ref()?);
     let obs = {
         let source = runtime.observation_source(pack)?;
         build_observation(observe, rules, &source, locked)
     };
-    match riso_rules::score(rules, &obs) {
+    match raso_rules::score(rules, &obs) {
         Ok(sheet) => {
             let sheet = Arc::new(sheet);
             runtime.set_score(ScoreState::from_sheet(sheet.clone()));
@@ -4198,7 +4198,7 @@ fn rescore(runtime: &mut RuntimeBackend, pack: &GamePackMetadata, locked: Option
 
 ```rust
 let mut locked_robots: Option<Vec<(String, String)>> = None;
-let mut final_observation: Option<(riso_rules::Observation, Arc<riso_rules::ScoreSheet>)> = None;
+let mut final_observation: Option<(raso_rules::Observation, Arc<raso_rules::ScoreSheet>)> = None;
 ```
 
 (khai báo cạnh `tick`, thay cho `brace_score_applied`/`endgame_brace_multipliers`; reset cả hai về `None` ở chỗ trước đây reset `endgame_brace_multipliers = None`.)
@@ -4259,7 +4259,7 @@ fn rescore_turns_balls_in_target_into_score_sheet() {
     let centre = [(target.min[0] + target.max[0]) / 2.0, (target.min[1] + target.max[1]) / 2.0, (target.min[2] + target.max[2]) / 2.0];
     sphere.place_test_balls(&[centre, centre, centre], Some("red"));
     let (obs, sheet) = rescore(&mut runtime, &pack, None).expect("tính được");
-    assert_eq!(obs.sides["red"].inputs["su_wildfire"], riso_rules::InputValue::Int(3));
+    assert_eq!(obs.sides["red"].inputs["su_wildfire"], raso_rules::InputValue::Int(3));
     assert_eq!(sheet.sides["red"].score, 3);
     assert_eq!(runtime.score_state().red_score, 3);
 }
@@ -4291,11 +4291,11 @@ Thêm benchmark `score()` (test `#[ignore]` trong `scoring_bridge.rs`):
 #[test]
 #[ignore]
 fn benchmark_score_fgc_2026() {
-    let rules = riso_rules::load(RULES, &riso_rules::NoParents).unwrap();
+    let rules = raso_rules::load(RULES, &raso_rules::NoParents).unwrap();
     let obs = rules.blank_observation();
     let started = std::time::Instant::now();
     for _ in 0..1_000 {
-        riso_rules::score(&rules, &obs).unwrap();
+        raso_rules::score(&rules, &obs).unwrap();
     }
     let per_call_ms = started.elapsed().as_secs_f64();
     println!("score() fgc-2026: {per_call_ms:.4} ms/lần");
@@ -4321,7 +4321,7 @@ fn locked_robot_labels_are_used_for_final_score() {
     let mut runtime = RuntimeBackend::new("t".into(), &pack, 1);
     let locked = vec![("red".to_string(), "zone3".to_string())];
     let (obs, _) = rescore(&mut runtime, &pack, Some(&locked)).unwrap();
-    assert_eq!(obs.sides["red"].robots[0]["climb"], riso_rules::InputValue::Text("ZONE_3".into()));
+    assert_eq!(obs.sides["red"].robots[0]["climb"], raso_rules::InputValue::Text("ZONE_3".into()));
 }
 ```
 
@@ -4331,7 +4331,7 @@ rồi phá `rescore` để bỏ qua `locked` → test này đỏ. Hoàn tác.
 
 ```bash
 git add server pkgs/games/fgc-2026
-git commit -m "feat(server): tính điểm trận bằng riso-rules, gỡ điểm viết cứng và scoring.rhai"
+git commit -m "feat(server): tính điểm trận bằng raso-rules, gỡ điểm viết cứng và scoring.rhai"
 ```
 
 ---
@@ -4359,8 +4359,8 @@ git commit -m "feat(server): tính điểm trận bằng riso-rules, gỡ điể
 #[test]
 fn snapshot_carries_score_sheet_section_14() {
     let mut state = test_state(); // helper hiện có dùng cho test kích thước 1.000 bóng
-    let rules = riso_rules::load(include_str!("../../../../pkgs/games/fgc-2026/rules.yaml"), &riso_rules::NoParents).unwrap();
-    let sheet = std::sync::Arc::new(riso_rules::score(&rules, &rules.blank_observation()).unwrap());
+    let rules = raso_rules::load(include_str!("../../../../pkgs/games/fgc-2026/rules.yaml"), &raso_rules::NoParents).unwrap();
+    let sheet = std::sync::Arc::new(raso_rules::score(&rules, &rules.blank_observation()).unwrap());
     state.score = ScoreState::from_sheet(sheet);
     let bytes = encode_state(&state, ProcessMetrics::default(), false, false);
     assert_eq!(u16::from_le_bytes([bytes[6], bytes[7]]), 6, "minor version");
@@ -4605,7 +4605,7 @@ curl -s localhost:8787/api/rules/fgc-2025 | head -5
 curl -s -o /dev/null -w '%{http_code}\n' localhost:8787/api/rules/khong-co
 ```
 
-Expected: JSON có 2 đề; YAML bắt đầu bằng `schema: riso.rules/v1`; `404`.
+Expected: JSON có 2 đề; YAML bắt đầu bằng `schema: raso.rules/v1`; `404`.
 
 Khởi động lại server Rust với `API_URL` local → log có `Loaded scoring rules game=fgc-2026`.
 
@@ -4625,25 +4625,25 @@ git commit -m "feat(api): /api/rules công khai + runtime snapshot kèm rules/ob
 ### Task 13: Trang trọng tài `/referee/[gameId]`
 
 **Files:**
-- Modify: `web/vite.config.ts` (alias `$riso`, `server.fs.allow`)
-- Create: `web/src/lib/riso.ts`
+- Modify: `web/vite.config.ts` (alias `$raso`, `server.fs.allow`)
+- Create: `web/src/lib/raso.ts`
 - Create: `web/src/routes/(public)/referee/+page.svelte`
 - Create: `web/src/routes/(public)/referee/[gameId]/+page.ts`
 - Create: `web/src/routes/(public)/referee/[gameId]/+page.svelte`
 - Create: `web/src/routes/(public)/referee/[gameId]/InputControl.svelte`
-- Create: `web/src/lib/riso.test.ts`
+- Create: `web/src/lib/raso.test.ts`
 
 **Interfaces:**
 - Consumes: WASM `RulesHandle` (Task 8), `GET /api/rules`, `GET /api/rules/:id` (Task 12).
 - Produces:
   - `export async function loadRules(gameId: string, fetchFn?: typeof fetch): Promise<{ handle: RulesHandle; rules: RulesDescription }>` — tải YAML đề và mọi đề cha (đọc dòng `extends:`), khởi tạo WASM một lần.
   - `export type RulesDescription` (JSON của `describe()`): `{ game, name, version, sides: { ids: string[]; teams: number }, inputs: { field, side, robot: Record<string, InputDef> }, fouls: Record<string, { label: string }>, cards: Record<string, string> }`, `InputDef = { type: 'count' | 'choice' | 'bool'; max?: number | null; values: string[]; label: string; label_en?: string | null; help?: string | null }`.
-  - `export function draftKey(gameId: string): string` → `riso-referee-draft:<gameId>`.
+  - `export function draftKey(gameId: string): string` → `raso-referee-draft:<gameId>`.
 
 - [ ] **Step 1: Alias WASM** — trong `web/vite.config.ts`, thêm vào options của `sveltekit({...})`:
 
 ```ts
-alias: { $riso: '../crates/riso-rules/pkg' },
+alias: { $raso: '../crates/raso-rules/pkg' },
 ```
 
 và vào `defineConfig`:
@@ -4656,15 +4656,15 @@ server: {
 ```
 
 Run: `cd web && pnpm check`
-Expected: không lỗi phân giải `$riso` (sau khi đã chạy `./scripts/build-rules-wasm.sh`). Nếu `alias` không được chấp nhận trong options plugin, đặt nó vào `svelte.config.js` mới (`export default { kit: { alias: { $riso: '../crates/riso-rules/pkg' } } }`) và chuyển các option kit hiện có sang đó.
+Expected: không lỗi phân giải `$raso` (sau khi đã chạy `./scripts/build-rules-wasm.sh`). Nếu `alias` không được chấp nhận trong options plugin, đặt nó vào `svelte.config.js` mới (`export default { kit: { alias: { $raso: '../crates/raso-rules/pkg' } } }`) và chuyển các option kit hiện có sang đó.
 
-- [ ] **Step 2: Viết test thất bại cho `riso.ts`** — `web/src/lib/riso.test.ts`:
+- [ ] **Step 2: Viết test thất bại cho `raso.ts`** — `web/src/lib/raso.test.ts`:
 
 ```ts
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { draftKey, loadRules } from './riso';
+import { draftKey, loadRules } from './raso';
 
 const games = join(__dirname, '../../../pkgs/games');
 const fakeFetch: typeof fetch = async (input) => {
@@ -4679,29 +4679,29 @@ const fakeFetch: typeof fetch = async (input) => {
 
 describe('loadRules', () => {
 	it('tải đề và mô tả ô biên bản', async () => {
-		const { rules } = await loadRules('fgc-2026', fakeFetch, readFileSync(join(__dirname, '../../../crates/riso-rules/pkg/riso_rules_bg.wasm')));
+		const { rules } = await loadRules('fgc-2026', fakeFetch, readFileSync(join(__dirname, '../../../crates/raso-rules/pkg/raso_rules_bg.wasm')));
 		expect(rules.game).toBe('fgc-2026');
 		expect(Object.keys(rules.inputs.robot)).toEqual(['climb', 'lifted_by_partner']);
 		expect(rules.sides.teams).toBe(3);
 	});
 
 	it('báo lỗi rõ khi đề không tồn tại', async () => {
-		await expect(loadRules('khong-co', fakeFetch, readFileSync(join(__dirname, '../../../crates/riso-rules/pkg/riso_rules_bg.wasm')))).rejects.toThrow(/khong-co/);
+		await expect(loadRules('khong-co', fakeFetch, readFileSync(join(__dirname, '../../../crates/raso-rules/pkg/raso_rules_bg.wasm')))).rejects.toThrow(/khong-co/);
 	});
 
 	it('khoá bản nháp theo đề', () => {
-		expect(draftKey('fgc-2026')).toBe('riso-referee-draft:fgc-2026');
+		expect(draftKey('fgc-2026')).toBe('raso-referee-draft:fgc-2026');
 	});
 });
 ```
 
-Run: `cd web && pnpm vitest run src/lib/riso.test.ts`
-Expected: FAIL (chưa có `riso.ts`).
+Run: `cd web && pnpm vitest run src/lib/raso.test.ts`
+Expected: FAIL (chưa có `raso.ts`).
 
-- [ ] **Step 3: Viết `web/src/lib/riso.ts`**
+- [ ] **Step 3: Viết `web/src/lib/raso.ts`**
 
 ```ts
-import init, { initSync, RulesHandle } from '$riso/riso_rules.js';
+import init, { initSync, RulesHandle } from '$raso/raso_rules.js';
 
 export type InputDef = {
 	type: 'count' | 'choice' | 'bool';
@@ -4766,13 +4766,13 @@ export async function loadRules(
 }
 
 export function draftKey(gameId: string): string {
-	return `riso-referee-draft:${gameId}`;
+	return `raso-referee-draft:${gameId}`;
 }
 ```
 
-Ghi chú: trong vitest, alias `$riso` cần khai báo thêm ở `web/vitest.config.ts`: `resolve: { alias: { $riso: new URL('../crates/riso-rules/pkg', import.meta.url).pathname } }`.
+Ghi chú: trong vitest, alias `$raso` cần khai báo thêm ở `web/vitest.config.ts`: `resolve: { alias: { $raso: new URL('../crates/raso-rules/pkg', import.meta.url).pathname } }`.
 
-Run: `cd web && pnpm vitest run src/lib/riso.test.ts`
+Run: `cd web && pnpm vitest run src/lib/raso.test.ts`
 Expected: PASS 3 test.
 
 - [ ] **Step 4: Trang danh sách đề** — `web/src/routes/(public)/referee/+page.svelte`:
@@ -4796,7 +4796,7 @@ Expected: PASS 3 test.
 	});
 </script>
 
-<svelte:head><title>RISO — Chấm điểm trọng tài</title></svelte:head>
+<svelte:head><title>RASO — Chấm điểm trọng tài</title></svelte:head>
 
 <main class="mx-auto max-w-2xl p-4">
 	<h1 class="mb-4 text-2xl font-bold">Chấm điểm trận thật</h1>
@@ -4827,7 +4827,7 @@ export function load({ params }) {
 
 ```svelte
 <script lang="ts">
-	import type { InputDef } from '$lib/riso';
+	import type { InputDef } from '$lib/raso';
 
 	let { def, value = $bindable(), error }: { def: InputDef; value: number | string | boolean; error?: string } = $props();
 	const step = (delta: number) => {
@@ -4871,8 +4871,8 @@ Ghi chú: ô `count` dùng `<input type="number">`; khi người dùng gõ `2.5`
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import InputControl from './InputControl.svelte';
-	import { draftKey, loadRules, type RulesDescription } from '$lib/riso';
-	import type { RulesHandle } from '$riso/riso_rules.js';
+	import { draftKey, loadRules, type RulesDescription } from '$lib/raso';
+	import type { RulesHandle } from '$raso/raso_rules.js';
 
 	let { data } = $props();
 	type Obs = {
@@ -4956,7 +4956,7 @@ Ghi chú: ô `count` dùng `<input type="number">`; khi người dùng gõ `2.5`
 	}
 </script>
 
-<svelte:head><title>RISO — Trọng tài {data.gameId}</title></svelte:head>
+<svelte:head><title>RASO — Trọng tài {data.gameId}</title></svelte:head>
 
 <main class="mx-auto max-w-6xl p-4 print:p-0">
 	{#if loadError}
@@ -5057,14 +5057,14 @@ Chạy api + web, mở `http://localhost:5173/referee` → thấy 2 đề. Vào 
 
 - [ ] **Step 8: Phá thử**
 
-Trong `riso.ts`, bỏ vòng tải đề cha → chưa có đề mẫu nào dùng `extends` nên test không đỏ; thêm test vào `riso.test.ts`:
+Trong `raso.ts`, bỏ vòng tải đề cha → chưa có đề mẫu nào dùng `extends` nên test không đỏ; thêm test vào `raso.test.ts`:
 
 ```ts
 it('tải đề cha theo extends', async () => {
-	const child = 'schema: riso.rules/v1\nextends: fgc-2026\ngame: fgc-2026-mini\nname: Mini\nversion: 0.1.0\nsource: test\noverride:\n  constants.coop_bonus: { 6: 50 }\n';
+	const child = 'schema: raso.rules/v1\nextends: fgc-2026\ngame: fgc-2026-mini\nname: Mini\nversion: 0.1.0\nsource: test\noverride:\n  constants.coop_bonus: { 6: 50 }\n';
 	const fetchWithChild: typeof fetch = async (input) =>
 		String(input).endsWith('fgc-2026-mini') ? new Response(child) : fakeFetch(input);
-	const { rules } = await loadRules('fgc-2026-mini', fetchWithChild, readFileSync(join(__dirname, '../../../crates/riso-rules/pkg/riso_rules_bg.wasm')));
+	const { rules } = await loadRules('fgc-2026-mini', fetchWithChild, readFileSync(join(__dirname, '../../../crates/raso-rules/pkg/raso_rules_bg.wasm')));
 	expect(rules.game).toBe('fgc-2026-mini');
 	expect(rules.sides.teams).toBe(3);
 });
@@ -5105,24 +5105,24 @@ Thêm job:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: crates/riso-rules
+          workspaces: crates/raso-rules
       - run: cargo fmt --all --check
-        working-directory: crates/riso-rules
+        working-directory: crates/raso-rules
       - run: cargo test --all-targets
-        working-directory: crates/riso-rules
+        working-directory: crates/raso-rules
         env:
           RUSTFLAGS: -D warnings
-      - run: cargo run --features cli --bin riso -- check $(ls -d ../../pkgs/games/*/ | while read d; do [ -f "$d/rules.yaml" ] && echo "$d"; done)
-        working-directory: crates/riso-rules
+      - run: cargo run --features cli --bin raso -- check $(ls -d ../../pkgs/games/*/ | while read d; do [ -f "$d/rules.yaml" ] && echo "$d"; done)
+        working-directory: crates/raso-rules
       - run: cargo install wasm-pack --locked
       - run: ./scripts/build-rules-wasm.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: riso-rules-wasm
-          path: crates/riso-rules/pkg
+          name: raso-rules-wasm
+          path: crates/raso-rules/pkg
 ```
 
-Trong job `web`: thêm `needs: rules`, bước `actions/download-artifact@v4` (`name: riso-rules-wasm`, `path: crates/riso-rules/pkg`) trước `pnpm install`, và bước `pnpm vitest run` sau `pnpm run check`. Job `rust` (server) cần thấy `../crates/riso-rules` — đã có vì checkout toàn repo; thêm `crates/riso-rules` vào `workspaces` của `rust-cache` nếu muốn cache.
+Trong job `web`: thêm `needs: rules`, bước `actions/download-artifact@v4` (`name: raso-rules-wasm`, `path: crates/raso-rules/pkg`) trước `pnpm install`, và bước `pnpm vitest run` sau `pnpm run check`. Job `rust` (server) cần thấy `../crates/raso-rules` — đã có vì checkout toàn repo; thêm `crates/raso-rules` vào `workspaces` của `rust-cache` nếu muốn cache.
 
 - [ ] **Step 2: Tài liệu**
 
@@ -5131,10 +5131,10 @@ Trong job `web`: thêm `needs: rules`, bước `actions/download-artifact@v4` (`
 ```markdown
 ## Viết luật tính điểm (`rules.yaml`)
 
-1. Tạo `pkgs/games/<id>/rules.yaml` theo `docs/superpowers/specs/2026-10-15-riso-rules-design.md` (mục 4). Mẫu: `pkgs/games/fgc-2026/rules.yaml`, `pkgs/games/fgc-2025/rules.yaml`.
+1. Tạo `pkgs/games/<id>/rules.yaml` theo `docs/superpowers/specs/2026-10-15-raso-rules-design.md` (mục 4). Mẫu: `pkgs/games/fgc-2026/rules.yaml`, `pkgs/games/fgc-2025/rules.yaml`.
 2. Đề dựa trên đề khác: `extends: <id-đề-cha>` + khối `override:` chỉ ghi phần thay đổi.
 3. Viết ít nhất 6 biên bản mẫu trong `tests/scoring/*.yaml`, phủ mọi dòng trong bảng điểm của game manual và các ranh giới.
-4. Chạy `cd crates/riso-rules && cargo run --features cli --bin riso -- check ../../pkgs/games/<id>`.
+4. Chạy `cd crates/raso-rules && cargo run --features cli --bin raso -- check ../../pkgs/games/<id>`.
 5. Thêm đề vào `pkgs/games/index.json` để hiện trên trang `/referee`.
 6. Muốn chơi mô phỏng: thêm `observe.yaml` ánh xạ từng ô biên bản sang phép đo (`count_objects`, `brace_state`, `not_simulated`).
 ```
@@ -5148,7 +5148,7 @@ Trong job `web`: thêm `needs: rules`, bước `actions/download-artifact@v4` (`
 Run:
 
 ```bash
-(cd crates/riso-rules && cargo fmt --all --check && cargo test --all-targets && cargo run --features cli --bin riso -- check ../../pkgs/games/fgc-2026 ../../pkgs/games/fgc-2025)
+(cd crates/raso-rules && cargo fmt --all --check && cargo test --all-targets && cargo run --features cli --bin raso -- check ../../pkgs/games/fgc-2026 ../../pkgs/games/fgc-2025)
 ./scripts/build-rules-wasm.sh
 (cd server && cargo fmt --all --check && cargo test --release)
 (cd api && pnpm check && pnpm build)
@@ -5163,7 +5163,7 @@ Tuỳ chọn khi máy 201 đang bật: chép repo sang 201 và chạy `cargo tes
 
 ```bash
 git add .github CONTRIBUTING.md docs
-git commit -m "ci(rules): job riso-rules + WASM; docs viết luật và trang trọng tài"
+git commit -m "ci(rules): job raso-rules + WASM; docs viết luật và trang trọng tài"
 ```
 
 ---

@@ -1,4 +1,4 @@
-# Chạy RISO tại máy
+# Chạy RASO tại máy
 
 Đã kiểm chứng ngày 15/10/2026 trên macOS (Apple Silicon) và Ubuntu 24.04 (x86_64).
 
@@ -46,8 +46,8 @@ cd web && pnpm install && pnpm dev
 Trang chấm điểm trận thật: http://localhost:5173/referee
 
 Build bản production: luôn chạy `./scripts/build-rules-wasm.sh` (từ thư mục gốc) **trước** `pnpm build`
-— web nhập bộ máy luật từ `crates/riso-rules/pkg`; thiếu gói này thì `pnpm build` dừng ngay và báo lỗi.
-Sau mỗi lần sửa Rust trong `crates/riso-rules` cũng phải build lại WASM.
+— web nhập bộ máy luật từ `crates/raso-rules/pkg`; thiếu gói này thì `pnpm build` dừng ngay và báo lỗi.
+Sau mỗi lần sửa Rust trong `crates/raso-rules` cũng phải build lại WASM.
 
 ```sh
 ./scripts/build-rules-wasm.sh
@@ -72,7 +72,7 @@ Mở http://localhost:5173 → **Open arena**.
 ## Kiểm thử & đo hiệu năng
 
 ```sh
-(cd crates/riso-rules && cargo test --all-targets)
+(cd crates/raso-rules && cargo test --all-targets)
 cd server
 cargo test --release
 cargo test --release benchmark_1000_ball_robot_interaction -- --ignored --nocapture

@@ -1,4 +1,4 @@
-//! RISO — bộ máy tính điểm khai báo bằng YAML.
+//! RASO — bộ máy tính điểm khai báo bằng YAML.
 pub mod error;
 mod eval;
 pub mod expr;

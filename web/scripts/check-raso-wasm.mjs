@@ -1,11 +1,11 @@
 // Chặn `vite build` sớm với thông báo rõ khi chưa build WASM bộ máy luật
-// (`$riso` → ../crates/riso-rules/pkg). Chỉ kiểm tra tồn tại, không tự build:
+// (`$raso` → ../crates/raso-rules/pkg). Chỉ kiểm tra tồn tại, không tự build:
 // môi trường build web (CI, Cloudflare) có thể không có Rust/wasm-pack.
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const pkg = new URL('../../crates/riso-rules/pkg/', import.meta.url);
-const missing = ['riso_rules.js', 'riso_rules_bg.wasm'].filter((f) => !existsSync(new URL(f, pkg)));
+const pkg = new URL('../../crates/raso-rules/pkg/', import.meta.url);
+const missing = ['raso_rules.js', 'raso_rules_bg.wasm'].filter((f) => !existsSync(new URL(f, pkg)));
 if (missing.length) {
 	console.error(
 		`Thiếu WASM bộ máy luật (${missing.join(', ')}) trong ${fileURLToPath(pkg)}.\n` +

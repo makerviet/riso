@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import InputControl from './InputControl.svelte';
-	import { draftKey, fillFoulCounts, loadRules, type RulesDescription } from '$lib/riso';
-	import type { RulesHandle } from '$riso/riso_rules.js';
+	import { draftKey, fillFoulCounts, loadRules, type RulesDescription } from '$lib/raso';
+	import type { RulesHandle } from '$raso/raso_rules.js';
 
 	let { data } = $props();
 	type Obs = {
@@ -114,7 +114,7 @@
 	}
 </script>
 
-<svelte:head><title>RISO — Trọng tài {data.gameId}</title></svelte:head>
+<svelte:head><title>RASO — Trọng tài {data.gameId}</title></svelte:head>
 
 <main class="mx-auto max-w-6xl p-4 print:p-0">
 	{#if loadError}

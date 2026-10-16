@@ -35,7 +35,7 @@ Current section tags:
 11. `TRANSFER_DEBUG`: reviewer-only transfer mechanism internals.
 12. `BALL_DEBUG`: reviewer-only per-ball flags and contacts.
 13. `INPUT_ACKS`: input acknowledgements.
-14. `SCORE_SHEET`: the full riso-rules score sheet as `u32` byte length plus
+14. `SCORE_SHEET`: the full raso-rules score sheet as `u32` byte length plus
     UTF-8 JSON `{"sheet": ScoreSheet | null, "scoringError": string | null}`
     (about 4 KB for FGC 2026). It is sent only on join baselines, on periodic
     full frames (every 10th publish), and in the frame right after the sheet

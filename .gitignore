@@ -1,5 +1,5 @@
 /output/
 /tmp/
 
-crates/riso-rules/target/
-crates/riso-rules/pkg/
+crates/raso-rules/target/
+crates/raso-rules/pkg/

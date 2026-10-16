@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { draftKey, fillFoulCounts, loadRules, stepCount } from './riso';
+import { draftKey, fillFoulCounts, loadRules, stepCount } from './raso';
 
 const games = join(__dirname, '../../../pkgs/games');
-const wasm = () => readFileSync(join(__dirname, '../../../crates/riso-rules/pkg/riso_rules_bg.wasm'));
+const wasm = () => readFileSync(join(__dirname, '../../../crates/raso-rules/pkg/raso_rules_bg.wasm'));
 const fakeFetch: typeof fetch = async (input) => {
 	const url = String(input);
 	const id = url.split('/').pop()!;
@@ -28,12 +28,12 @@ describe('loadRules', () => {
 	});
 
 	it('khoá bản nháp theo đề', () => {
-		expect(draftKey('fgc-2026')).toBe('riso-referee-draft:fgc-2026');
+		expect(draftKey('fgc-2026')).toBe('raso-referee-draft:fgc-2026');
 	});
 
 	it('tải đề cha theo extends', async () => {
 		const child =
-			'schema: riso.rules/v1\nextends: fgc-2026\ngame: fgc-2026-mini\nname: Mini\nversion: 0.1.0\nsource: test\noverride:\n  constants.coop_bonus: { 6: 50 }\n';
+			'schema: raso.rules/v1\nextends: fgc-2026\ngame: fgc-2026-mini\nname: Mini\nversion: 0.1.0\nsource: test\noverride:\n  constants.coop_bonus: { 6: 50 }\n';
 		const fetchWithChild: typeof fetch = async (input) =>
 			String(input).endsWith('fgc-2026-mini') ? new Response(child) : fakeFetch(input);
 		const { rules } = await loadRules('fgc-2026-mini', fetchWithChild, wasm());

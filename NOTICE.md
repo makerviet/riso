@@ -2,7 +2,7 @@
 
 ## Nguồn gốc
 
-RISO bắt nguồn từ dự án **FIRSTGlobalSimulator**
+RASO bắt nguồn từ dự án **FIRSTGlobalSimulator**
 (https://github.com/onlyin32bit/FIRSTGlobalSimulator) do **Khang Ngo-Bao**
 viết cho Team Vietnam tham dự FIRST Global Challenge 2026, cùng đóng góp của
 **Tran Huu Duc Hieu** (@Duchieu1410, tích hợp Starter Bot — PR #6). Toàn bộ lịch sử
@@ -14,7 +14,7 @@ Việc phát hành dưới giấy phép MIT được thực hiện với sự đ
 
 FIRST®, FIRST® Global Challenge và các tên đề thi (ví dụ *Igniting Innovation*)
 là thương hiệu của chủ sở hữu tương ứng. FAnRoC là cuộc thi của FPT Schools.
-RISO không liên kết, không được bảo trợ hay xác nhận bởi các tổ chức này.
+RASO không liên kết, không được bảo trợ hay xác nhận bởi các tổ chức này.
 Tên giải và tên đề chỉ được dùng để mô tả nội dung mô phỏng.
 
 ## Logo

@@ -1,4 +1,4 @@
-use riso_rules::pack::check_pack;
+use raso_rules::pack::check_pack;
 use std::path::PathBuf;
 
 fn games_root() -> PathBuf {

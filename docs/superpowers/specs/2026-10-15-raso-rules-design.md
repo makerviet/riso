@@ -1,4 +1,4 @@
-# RISO — Bộ máy tính điểm kiểu FIRST (`riso-rules`) — Thiết kế
+# RASO — Bộ máy tính điểm kiểu FIRST (`raso-rules`) — Thiết kế
 
 - **Ngày:** 15/10/2026
 - **Trạng thái:** chờ duyệt
@@ -8,7 +8,7 @@
 
 Một bộ máy tính điểm duy nhất, khai báo bằng file, dùng chung cho:
 
-1. **Trận mô phỏng:** server RISO tự đo trạng thái sân và tính điểm.
+1. **Trận mô phỏng:** server RASO tự đo trạng thái sân và tính điểm.
 2. **Trận thật:** trọng tài nhập biên bản trên máy tính bảng tại giải (FAnRoC, buổi tập, giải FGC thử).
 
 Giáo viên và học sinh khá phải tự viết được luật cho một đề mới mà không cần sửa code Rust.
@@ -16,7 +16,7 @@ Giáo viên và học sinh khá phải tự viết được luật cho một đ�
 ### Tiêu chí thành công
 
 - FGC 2026 *Igniting Innovation* và FGC 2025 *Eco Equilibrium* có file luật chạy được, khớp game manual; bộ test của mỗi đề xanh.
-- Trong mô phỏng FGC 2026, mọi điểm đều đi qua `riso-rules`; không còn điểm viết cứng trong Rust.
+- Trong mô phỏng FGC 2026, mọi điểm đều đi qua `raso-rules`; không còn điểm viết cứng trong Rust.
 - Trang `/referee/<đề>` chấm một trận thật hoàn toàn trong trình duyệt bằng WASM, kết quả trùng từng chữ số với bản Rust.
 - Cùng một biên bản thì mô phỏng, trang trọng tài và CLI cho cùng kết quả.
 
@@ -45,10 +45,10 @@ pkgs/games/<id>/rules.yaml      luật (công khai)          ┐
 pkgs/games/<id>/observe.yaml    ánh xạ đo mô phỏng (riêng) │ gói đề
 pkgs/games/<id>/tests/scoring/  biên bản + kết quả mẫu    ┘
                 │
-        crates/riso-rules  (Rust, thuần, không vật lý)
+        crates/raso-rules  (Rust, thuần, không vật lý)
           ├─ lib:  validate / score / rank
-          ├─ bin:  riso (CLI)
-          └─ wasm: wasm-bindgen → crates/riso-rules/pkg
+          ├─ bin:  raso (CLI)
+          └─ wasm: wasm-bindgen → crates/raso-rules/pkg
                 │                         │
         server (path dep)            web /referee/<id>
         đo → biên bản → score        nhập tay → biên bản → score
@@ -69,13 +69,13 @@ pub fn rank(rules: &Rules, results: &[MatchResult]) -> Result<Standings, Vec<Sco
 - `ScoreSheet`: từng giá trị có `label` theo cấp field/side/robot, điểm phạt, điểm cuối mỗi liên minh, điểm từng đội sau khi áp thẻ, các mục `not_simulated`.
 - `MatchResult`: gồm `Observation` và `ScoreSheet` của một trận, kèm danh sách đội theo liên minh.
 
-## 4. Định dạng `rules.yaml` (schema `riso.rules/v1`)
+## 4. Định dạng `rules.yaml` (schema `raso.rules/v1`)
 
 ### 4.1 Khối cấp cao
 
 | Khối | Bắt buộc | Ý nghĩa |
 |---|---|---|
-| `schema` | có | `riso.rules/v1` |
+| `schema` | có | `raso.rules/v1` |
 | `game`, `name`, `version`, `source` | có | id đề, tên, phiên bản luật (semver, tăng khi đổi điểm), trích dẫn game manual |
 | `extends` + `override` | không | kế thừa đề khác (mục 4.6) |
 | `sides` | có | `ids` (ví dụ `[red, blue]`), `teams` mỗi liên minh |
@@ -192,7 +192,7 @@ Validate biên bản: đủ ô, `count` là số nguyên ≥ 0 và ≤ `max`, `c
 Nguồn: Game Manual mục 3.6; đối chiếu máy tính điểm chính thức (first.global/calculator).
 
 ```yaml
-schema: riso.rules/v1
+schema: raso.rules/v1
 game: fgc-2026
 name: Igniting Innovation
 version: 1.0.0
@@ -254,7 +254,7 @@ Làm tròn lên ở bước `su_points` cộng với `rounding: ceil` ở điể
 Nguồn: Game Manual mục 3.2–3.6, 6.3; máy tính điểm Google Sheets chính thức.
 
 ```yaml
-schema: riso.rules/v1
+schema: raso.rules/v1
 game: fgc-2025
 name: Eco Equilibrium
 version: 1.0.0
@@ -374,37 +374,37 @@ robot.lifted_by_partner: { not_simulated: false }
 - Xuất kết quả: in (CSS riêng cho bản in) và tải `bien-ban-<gameId>-<thời gian>.json` (gồm `Observation` và `ScoreSheet`).
 - Hai ngôn ngữ vi/en theo Paraglide có sẵn; nhãn ô lấy từ `label`/`label_en`.
 
-## 9. CLI `riso`
+## 9. CLI `raso`
 
 ```
-riso check <thư-mục-đề>...        load + chạy tests/scoring, thoát mã ≠ 0 khi lỗi
-riso score <rules.yaml> <biên-bản.yaml> [--json]
-riso rank  <rules.yaml> <kết-quả>.json...
+raso check <thư-mục-đề>...        load + chạy tests/scoring, thoát mã ≠ 0 khi lỗi
+raso score <rules.yaml> <biên-bản.yaml> [--json]
+raso rank  <rules.yaml> <kết-quả>.json...
 ```
 
 ## 10. Xử lý lỗi
 
 - Lỗi `load` có mã, thông báo tiếng Việt, đường dẫn YAML và số dòng/cột: `RULE_YAML`, `RULE_UNKNOWN_NAME`, `RULE_CYCLE`, `RULE_SCOPE` (dùng tên không thuộc cấp), `RULE_FORBIDDEN` (cú pháp bị cấm), `RULE_EXTENDS`, `RULE_FOUL_REF`.
 - Lỗi `score` cũng có mã: `OBS_MISSING`, `OBS_RANGE`, `OBS_CHOICE`, `OBS_ROBOTS`, `EVAL` (kèm tên giá trị, ví dụ chia cho 0 hoặc `lookup` không có khoá), `EVAL_LIMIT`.
-- `riso check` coi đề **không có test** là lỗi.
+- `raso check` coi đề **không có test** là lỗi.
 
 ## 11. Kiểm thử
 
 | Lớp | Nội dung |
 |---|---|
-| Đơn vị `riso-rules` | Mỗi hàm có sẵn và các biên của nó; sắp topo + phát hiện vòng; phạm vi tên theo cấp; số thập phân (`ceil(20 * 1.05) == 21`, `ceil(20 * (1 + 0.05 + 0.10 + 0.20)) == 27`); `goes_to` opponent/self; `team_zero`; `drop_lowest` + `not_if`; `keep_best`; tiebreaker; `extends` + `override` (đề thử trong `crates/riso-rules/tests/fixtures`); hộp cát từ chối `while`, `fn`, `import`, vượt giới hạn phép toán |
+| Đơn vị `raso-rules` | Mỗi hàm có sẵn và các biên của nó; sắp topo + phát hiện vòng; phạm vi tên theo cấp; số thập phân (`ceil(20 * 1.05) == 21`, `ceil(20 * (1 + 0.05 + 0.10 + 0.20)) == 27`); `goes_to` opponent/self; `team_zero`; `drop_lowest` + `not_if`; `keep_best`; tiebreaker; `extends` + `override` (đề thử trong `crates/raso-rules/tests/fixtures`); hộp cát từ chối `while`, `fn`, `import`, vượt giới hạn phép toán |
 | Bộ test của đề | `pkgs/games/fgc-2026/tests/scoring/` và `fgc-2025/...`, mỗi đề ≥ 6 biên bản phủ mọi dòng trong bảng điểm manual, các ranh giới (σ = 1, σ = 10, coop 3/4/5/6, Knockdown bằng nhau), lỗi phạt, thẻ. Kết quả mong đợi tính tay theo manual và đối chiếu máy tính chính thức; ghi chú ca nào máy tính lệch (DF 0,59999) |
-| WASM ↔ native | Script Node (vitest trong `web`) chạy cùng bộ biên bản qua bản WASM, so sánh JSON `ScoreSheet` với output `riso score --json` |
+| WASM ↔ native | Script Node (vitest trong `web`) chạy cùng bộ biên bản qua bản WASM, so sánh JSON `ScoreSheet` với output `raso score --json` |
 | Server | Test tích hợp: dựng `SphereRuntime` FGC 2026, đặt N bóng vào `red-suppression-unit` có `last_outtake_alliance = red`, đặt robot leo zone 2 → `Observation` đúng → `ScoreSheet` đúng. 56 test hiện có phải xanh (trừ các test kiểm tra hàm bị gỡ, được viết lại theo đường mới) |
 | Hiệu năng | Benchmark 1.000 bóng p99 không tăng quá 5%; thêm benchmark `score()` FGC 2026 (mục tiêu < 1 ms, đo trên Mac và máy 201) |
 | Chống test không thể sai | Với mỗi test quan trọng, chứng minh test đỏ khi cố tình làm hỏng code (ví dụ bỏ `ceil`, đổi `>` thành `>=` ở Knockdown) |
 
-CI thêm job `rules` gồm: `cargo fmt --check`, `cargo test`, `wasm-pack build --target web`, test WASM, `riso check pkgs/games/*`.
+CI thêm job `rules` gồm: `cargo fmt --check`, `cargo test`, `wasm-pack build --target web`, test WASM, `raso check pkgs/games/*`.
 
 ## 12. Bố cục code
 
 ```
-crates/riso-rules/
+crates/raso-rules/
   Cargo.toml              features: cli, wasm
   src/lib.rs              load / score / rank
   src/schema.rs           kiểu dữ liệu YAML (serde)
@@ -414,12 +414,12 @@ crates/riso-rules/
   src/eval.rs             tính theo cấp robot → side → field, phạt, thẻ, làm tròn
   src/rank.rs             xếp hạng
   src/error.rs            mã lỗi + thông báo tiếng Việt
-  src/bin/riso.rs         CLI
+  src/bin/raso.rs         CLI
   src/wasm.rs             wasm-bindgen
   tests/                  test đơn vị + fixtures
 pkgs/games/fgc-2026/{rules.yaml, observe.yaml, tests/scoring/*.yaml}
 pkgs/games/fgc-2025/{manifest.json, rules.yaml, tests/scoring/*.yaml}   # chưa có sân 3D
-server/src/game/scoring_bridge.rs     Observation từ SphereRuntime + gọi riso-rules
+server/src/game/scoring_bridge.rs     Observation từ SphereRuntime + gọi raso-rules
 web/src/routes/(public)/referee/[gameId]/+page.svelte (+ components)
 ```
 

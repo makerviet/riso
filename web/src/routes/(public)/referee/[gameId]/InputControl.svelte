@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { stepCount, type InputDef } from '$lib/riso';
+	import { stepCount, type InputDef } from '$lib/raso';
 
 	let { def, value = $bindable(), error }: { def: InputDef; value: number | string | boolean; error?: string } = $props();
 	const uid = $props.id();

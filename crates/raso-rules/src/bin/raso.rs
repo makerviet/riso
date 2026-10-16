@@ -1,6 +1,6 @@
-//! riso check <thư-mục-đề>... | riso score <rules.yaml> <biên-bản.yaml> [--json] | riso rank <rules.yaml> <kết-quả.json>...
-use riso_rules::pack::{DirResolver, check_pack};
-use riso_rules::{MatchResult, Observation, load, rank, score};
+//! raso check <thư-mục-đề>... | raso score <rules.yaml> <biên-bản.yaml> [--json] | raso rank <rules.yaml> <kết-quả.json>...
+use raso_rules::pack::{DirResolver, check_pack};
+use raso_rules::{MatchResult, Observation, load, rank, score};
 use std::path::Path;
 use std::process::ExitCode;
 
@@ -104,7 +104,7 @@ fn main() -> ExitCode {
         }
         _ => {
             eprintln!(
-                "Cách dùng:\n  riso check <thư-mục-đề>...\n  riso score <rules.yaml> <biên-bản.yaml> [--json]\n  riso rank <rules.yaml> <kết-quả.json>..."
+                "Cách dùng:\n  raso check <thư-mục-đề>...\n  raso score <rules.yaml> <biên-bản.yaml> [--json]\n  raso rank <rules.yaml> <kết-quả.json>..."
             );
             ExitCode::FAILURE
         }

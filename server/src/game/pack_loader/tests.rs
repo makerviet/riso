@@ -155,7 +155,7 @@ fn invalid_rules_reject_the_pack() {
     let mut snapshot = fixture_snapshot();
     snapshot.rules.insert(
         "fgc-2026".into(),
-        "schema: riso.rules/v1\ngame: fgc-2026".into(),
+        "schema: raso.rules/v1\ngame: fgc-2026".into(),
     );
     let error = loader.load_runtime_snapshot(snapshot).unwrap_err();
     assert!(error.to_string().contains("RULE_YAML"), "{error}");

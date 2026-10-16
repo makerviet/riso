@@ -110,7 +110,7 @@ pub struct GamePackMetadata {
     pub script_sources: BTreeMap<String, String>,
     /// Luật đã biên dịch; chỉ sống trong tiến trình, không gửi cho client.
     #[serde(skip)]
-    pub rules: Option<Arc<riso_rules::Rules>>,
+    pub rules: Option<Arc<raso_rules::Rules>>,
     #[serde(skip)]
     pub observe: Option<Arc<crate::game::scoring_bridge::ObserveSpec>>,
 }
@@ -589,7 +589,7 @@ impl PackLoader {
 }
 
 type LoadedRules = (
-    Option<Arc<riso_rules::Rules>>,
+    Option<Arc<raso_rules::Rules>>,
     Option<Arc<crate::game::scoring_bridge::ObserveSpec>>,
 );
 
@@ -605,7 +605,7 @@ fn load_rules(snapshot: &GamePackRuntimeSnapshot) -> Result<LoadedRules, GameErr
             paths.scoring, snapshot.manifest.id
         ))
     })?;
-    let rules = riso_rules::load(yaml, &riso_rules::MapResolver(snapshot.rules.clone())).map_err(
+    let rules = raso_rules::load(yaml, &raso_rules::MapResolver(snapshot.rules.clone())).map_err(
         |errors| {
             GameError::ScriptCompilationError(
                 errors

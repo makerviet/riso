@@ -39,7 +39,7 @@ pub struct MatchContext {
     pub clock: f64,
 }
 
-/// Bảng điểm sống của trận. Mọi con số đều lấy từ `riso_rules::score` trên
+/// Bảng điểm sống của trận. Mọi con số đều lấy từ `raso_rules::score` trên
 /// biên bản dựng từ mô phỏng; runtime vật lý không tự cộng điểm.
 #[derive(Debug, Clone, Default)]
 pub struct ScoreState {
@@ -48,13 +48,13 @@ pub struct ScoreState {
     pub global_score: i32,
     /// `<side>.<tên giá trị>` → giá trị có nhãn, làm tròn lên số nguyên.
     pub breakdown: HashMap<String, i32>,
-    pub sheet: Option<std::sync::Arc<riso_rules::ScoreSheet>>,
+    pub sheet: Option<std::sync::Arc<raso_rules::ScoreSheet>>,
     /// Lần tính gần nhất thất bại; bảng điểm giữ kết quả hợp lệ trước đó.
     pub scoring_error: Option<String>,
 }
 
 impl ScoreState {
-    pub fn from_sheet(sheet: std::sync::Arc<riso_rules::ScoreSheet>) -> Self {
+    pub fn from_sheet(sheet: std::sync::Arc<raso_rules::ScoreSheet>) -> Self {
         use rust_decimal::prelude::ToPrimitive;
         let side = |id: &str| {
             sheet
