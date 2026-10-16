@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import type { Pathname } from '$app/types';
+	import { dynamicRoute } from '$lib/paths';
 	import { onMount } from 'svelte';
 	import {
 		IconChevronDown,
@@ -38,7 +38,7 @@
 				errorMessage = 'Your account does not have administrator access.';
 		} catch (error) {
 			if (error instanceof ApiError && error.status === 401) {
-				await goto(resolve(('/auth?next=' + encodeURIComponent(page.url.pathname)) as Pathname));
+				await goto(resolve(dynamicRoute('/auth?next=' + encodeURIComponent(page.url.pathname))));
 				return;
 			}
 			errorMessage =
@@ -86,7 +86,7 @@
 						.url.pathname === item.href
 						? 'bg-muted font-medium text-foreground'
 						: 'text-foreground/80 hover:bg-muted'}"
-					href={resolve(item.href)}
+					href={resolve(dynamicRoute(item.href))}
 					onclick={() => (mobileNavOpen = false)}
 				>
 					<item.icon class="size-4 shrink-0" />

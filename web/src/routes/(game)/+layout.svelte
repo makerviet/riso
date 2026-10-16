@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { dynamicRoute } from '$lib/paths';
 	import { page } from '$app/state';
-	import type { Pathname } from '$app/types';
 	import { onMount } from 'svelte';
 	import { signOut, useSession } from '$lib/auth-client';
 	import { api, type ApiUser } from '$lib/api';
@@ -29,7 +29,7 @@
 	$effect(() => {
 		if (!$session.isPending && !$session.data) {
 			const next = `${page.url.pathname}${page.url.search}`;
-			void goto(resolve(('/auth?next=' + encodeURIComponent(next)) as Pathname));
+			void goto(resolve(dynamicRoute('/auth?next=' + encodeURIComponent(next))));
 		}
 	});
 

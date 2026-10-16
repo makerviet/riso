@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { dynamicRoute } from '$lib/paths';
 	import { page } from '$app/state';
 	import type { Pathname } from '$app/types';
 	import { Button } from '$lib/components/ui/button';
@@ -27,7 +28,7 @@
 	}
 
 	$effect(() => {
-		if (!$session.isPending && $session.data) goto(resolve(safeNext()));
+		if (!$session.isPending && $session.data) goto(resolve(dynamicRoute(safeNext())));
 	});
 
 	function messageFor(error: unknown) {
@@ -52,7 +53,7 @@
 				loginError = result.error.message || 'Unable to sign in with those credentials.';
 				return;
 			}
-			await goto(resolve(safeNext()));
+			await goto(resolve(dynamicRoute(safeNext())));
 		} catch (error) {
 			loginError = messageFor(error);
 		} finally {
@@ -76,7 +77,7 @@
 				registrationError = result.error.message || 'Unable to create your account.';
 				return;
 			}
-			await goto(resolve(safeNext()));
+			await goto(resolve(dynamicRoute(safeNext())));
 		} catch (error) {
 			registrationError = messageFor(error);
 		} finally {
