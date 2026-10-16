@@ -1,67 +1,68 @@
 use super::*;
 
 impl SphereRuntime {
-    pub(super) fn reconcile_scoring(&mut self) {
-        for ball_index in 0..self.balls.len() {
-            let ball = &self.balls[ball_index];
-            let previous = self.scored_target_by_ball[ball_index];
-            let next = self.scoring_targets.iter().position(|target| {
-                ball.active
-                    && target.enabled
-                    && point_inside_aabb(ball.position, target.min, target.max)
-                    && (!target.requires_robot_outtake
-                        || target.alliance.as_deref() == ball.last_outtake_alliance.as_deref())
-            });
-            if previous == next {
-                continue;
-            }
-            if let Some(target_index) = previous {
-                let target = self.scoring_targets[target_index].clone();
-                self.apply_score_delta(&target, -1);
-                self.semantic_events.push(SemanticEvent {
-                    kind: "score_removed",
-                    target_id: target.id.clone(),
-                    entity_id: format!("ball:{ball_index}"),
-                });
-            }
-            if let Some(target_index) = next {
-                let target = self.scoring_targets[target_index].clone();
-                self.apply_score_delta(&target, 1);
-                self.semantic_events.push(SemanticEvent {
-                    kind: "score_added",
-                    target_id: target.id.clone(),
-                    entity_id: format!("ball:{ball_index}"),
-                });
-            }
-            self.scored_target_by_ball[ball_index] = next;
-        }
+    /// Số bóng đang hoạt động nằm trong vùng target. `released_by` lọc theo
+    /// liên minh đã bắn bóng ra lần cuối. `None` nếu target không có/đang tắt.
+    pub fn count_in_target(&self, target_id: &str, released_by: Option<&str>) -> Option<i64> {
+        let target = self
+            .scoring_targets
+            .iter()
+            .find(|target| target.id == target_id && target.enabled)?;
+        Some(
+            self.balls
+                .iter()
+                .filter(|ball| {
+                    ball.active
+                        && point_inside_aabb(ball.position, target.min, target.max)
+                        && released_by
+                            .is_none_or(|side| ball.last_outtake_alliance.as_deref() == Some(side))
+                })
+                .count() as i64,
+        )
     }
 
-    fn apply_score_delta(&mut self, target: &FieldScoringTarget, direction: i32) {
-        let points = target.points * direction;
-        match target.alliance.as_deref() {
-            Some("blue") => {
-                self.score_state.blue_score += points;
-                if target.kind == "suppression-unit" {
-                    self.score_state.blue_su_score += points;
-                }
-            }
-            Some("red") => {
-                self.score_state.red_score += points;
-                if target.kind == "suppression-unit" {
-                    self.score_state.red_su_score += points;
-                }
-            }
-            _ => self.score_state.global_score += points,
-        }
-        let entry = self
-            .score_state
-            .breakdown
-            .entry(target.id.clone())
-            .or_insert(0);
-        *entry += points;
-        if *entry == 0 {
-            self.score_state.breakdown.remove(&target.id);
+    /// Nhãn trạng thái leo của từng robot, theo thứ tự id người chơi.
+    pub fn robot_brace_labels(&self, triggers: &[FieldTrigger]) -> Vec<(String, String)> {
+        let ground_offset_y = self
+            .arena
+            .as_ref()
+            .map(|arena| -arena.robot.height_m * 0.5)
+            .unwrap_or_default();
+        self.players
+            .values()
+            .filter_map(|player| {
+                let team = player.team_name.to_ascii_lowercase();
+                let side = if team.starts_with("red") {
+                    "red"
+                } else if team.starts_with("blue") {
+                    "blue"
+                } else {
+                    return None;
+                };
+                let state = brace::brace_state_for_player(
+                    player,
+                    self.robot_definition.as_ref(),
+                    ground_offset_y,
+                    &self.field_colliders,
+                    triggers,
+                );
+                let label = match (state.zone, state.multiplier > 1.0) {
+                    (Some(zone), _) => format!("zone{zone}"),
+                    (None, true) => "contact".to_string(),
+                    (None, false) => "none".to_string(),
+                };
+                Some((side.to_string(), label))
+            })
+            .collect()
+    }
+
+    /// Đặt bóng thẳng vào vị trí cho test tính điểm, bỏ qua vật lý.
+    #[cfg(test)]
+    pub fn place_test_balls(&mut self, positions: &[Vec3], released_by: Option<&str>) {
+        for (ball, position) in self.balls.iter_mut().zip(positions) {
+            ball.position = *position;
+            ball.active = true;
+            ball.last_outtake_alliance = released_by.map(str::to_string);
         }
     }
 }

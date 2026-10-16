@@ -1,0 +1,14 @@
+name: "Còn BARRIER trong ECOSYSTEM → DF 0,5 dù σ = 0"
+observation:
+  game: fgc-2025
+  field: { barriers_mitigated: 8, barriers_in_ecosystems: 1, bio_freshwater: 40, bio_marine: 40, bio_terrestrial: 40 }
+  sides:
+    red:
+      robots: [ { rope: NONE }, { rope: NONE }, { rope: NONE } ]
+    blue:
+      robots: [ { rope: NONE }, { rope: NONE }, { rope: NONE } ]
+expect:
+  field: { distribution: 0.5, coop: 0 }
+  sides:
+    red: { score: 68, values: { protection: 1 } }
+    blue: { score: 68, values: { protection: 1 } }

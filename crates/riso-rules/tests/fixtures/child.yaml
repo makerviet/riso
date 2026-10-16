@@ -1,0 +1,9 @@
+schema: riso.rules/v1
+extends: base-game
+game: child-game
+name: Child
+version: 0.1.0
+source: "fixture con"
+override:
+  constants.ball_points: 3
+  values.side.park_bonus: { expr: "7 * count(robots.parked)", label: "Đỗ xe (con)" }

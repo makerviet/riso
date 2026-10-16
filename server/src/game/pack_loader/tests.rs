@@ -1,63 +1,52 @@
 use super::{GamePackRuntimeSnapshot, PackLoader};
+use crate::game::error::GameError;
 use std::collections::BTreeMap;
 
-#[test]
-fn loads_manifest_and_all_rhai_rules() {
-    let loader = PackLoader::new("0.1.0");
+/// Đọc gói fgc-2026 từ đĩa thành snapshot giống API trả về.
+fn fixture_snapshot() -> GamePackRuntimeSnapshot {
     let root = std::path::Path::new("../pkgs/games/fgc-2026");
-    let manifest =
-        serde_json::from_str(&std::fs::read_to_string(root.join("manifest.json")).unwrap())
-            .unwrap();
-    let field_physics =
-        serde_json::from_str(&std::fs::read_to_string(root.join("field.physics.json")).unwrap())
-            .unwrap();
-    let field_semantics =
-        serde_json::from_str(&std::fs::read_to_string(root.join("field.semantics.json")).unwrap())
-            .unwrap();
-    let scripts = [
-        "rules/arena.rhai",
-        "rules/penalties.rhai",
-        "rules/robot.rhai",
-        "rules/scoring.rhai",
-    ]
-    .into_iter()
-    .map(|path| {
-        (
-            path.to_string(),
-            std::fs::read_to_string(root.join(path)).unwrap(),
-        )
-    })
-    .collect::<BTreeMap<_, _>>();
+    let read = |path: &str| std::fs::read_to_string(root.join(path)).unwrap();
+    let manifest: super::GamePackManifest = serde_json::from_str(&read("manifest.json")).unwrap();
+    let field_physics = serde_json::from_str(&read("field.physics.json")).unwrap();
+    let field_semantics = serde_json::from_str(&read("field.semantics.json")).unwrap();
+    let scripts = manifest
+        .scripts
+        .values()
+        .map(|path| (path.clone(), read(path)))
+        .collect::<BTreeMap<_, _>>();
     let robots = ["starter-bot"]
         .into_iter()
         .map(|id| {
-            let physics = serde_json::from_str(
-                &std::fs::read_to_string(root.join(format!("robots/{id}/bot.physics.json")))
-                    .unwrap(),
-            )
-            .unwrap();
-            let semantics = serde_json::from_str(
-                &std::fs::read_to_string(root.join(format!("robots/{id}/bot.semantics.json")))
-                    .unwrap(),
-            )
-            .unwrap();
+            let physics =
+                serde_json::from_str(&read(&format!("robots/{id}/bot.physics.json"))).unwrap();
+            let semantics =
+                serde_json::from_str(&read(&format!("robots/{id}/bot.semantics.json"))).unwrap();
             (
                 id.to_string(),
                 super::RobotRuntimeAssets { physics, semantics },
             )
         })
         .collect();
-    let metadata = loader
-        .load_runtime_snapshot(GamePackRuntimeSnapshot {
-            manifest,
-            field_physics,
-            field_semantics,
-            scripts,
-            robots,
-        })
-        .unwrap();
+    let paths = manifest.rules.clone().expect("manifest có mục rules");
+    let rules = BTreeMap::from([(manifest.id.clone(), read(&paths.scoring))]);
+    let observe = paths.observe.as_deref().map(read);
+    GamePackRuntimeSnapshot {
+        manifest,
+        field_physics,
+        field_semantics,
+        scripts,
+        robots,
+        rules,
+        observe,
+    }
+}
+
+#[test]
+fn loads_manifest_and_all_rhai_rules() {
+    let loader = PackLoader::new("0.1.0");
+    let metadata = loader.load_runtime_snapshot(fixture_snapshot()).unwrap();
     assert_eq!(metadata.manifest.id, "fgc-2026");
-    assert_eq!(metadata.scripts.len(), 4);
+    assert_eq!(metadata.scripts.len(), 2);
     assert_eq!(metadata.arena.object_count, 500);
     assert_eq!(metadata.arena.ball.diameter_m, 0.100);
     assert_eq!(metadata.arena.ball.mass_kg, 0.062);
@@ -128,10 +117,11 @@ fn loads_manifest_and_all_rhai_rules() {
     assert!((metadata.field_definition.boundary.max[0] - 3.5).abs() < 0.01);
     assert!(metadata.field_definition.floor_height_m > 0.65);
     assert!(
-        metadata
+        !metadata
             .scripts
             .iter()
-            .any(|script| script.path.ends_with("scoring.rhai"))
+            .any(|script| script.path.ends_with("scoring.rhai")
+                || script.path.ends_with("penalties.rhai"))
     );
     assert!(
         metadata
@@ -140,4 +130,73 @@ fn loads_manifest_and_all_rhai_rules() {
             .flat_map(|script| script.functions.iter())
             .any(|function| function.name == "validate_build")
     );
+}
+
+#[test]
+fn fgc_2026_pack_loads_rules_and_observe() {
+    let pack = PackLoader::new("0.1.0")
+        .load_pack("../pkgs/games/fgc-2026/manifest.json")
+        .unwrap();
+    let rules = pack.rules.as_ref().expect("gói fgc-2026 có rules.yaml");
+    assert_eq!(rules.file.game, "fgc-2026");
+    assert!(pack.observe.is_some());
+    assert!(
+        !pack
+            .manifest
+            .scripts
+            .values()
+            .any(|p| p.ends_with("scoring.rhai") || p.ends_with("penalties.rhai"))
+    );
+}
+
+#[test]
+fn invalid_rules_reject_the_pack() {
+    let loader = PackLoader::new("0.1.0");
+    let mut snapshot = fixture_snapshot();
+    snapshot.rules.insert(
+        "fgc-2026".into(),
+        "schema: riso.rules/v1\ngame: fgc-2026".into(),
+    );
+    let error = loader.load_runtime_snapshot(snapshot).unwrap_err();
+    assert!(error.to_string().contains("RULE_YAML"), "{error}");
+}
+
+#[test]
+fn invalid_observe_rejects_the_pack() {
+    let loader = PackLoader::new("0.1.0");
+    let mut snapshot = fixture_snapshot();
+    snapshot.observe = Some("side.bogus: { not_simulated: 0 }".into());
+    let error = loader.load_runtime_snapshot(snapshot).unwrap_err();
+    assert!(error.to_string().contains("side.bogus"), "{error}");
+}
+
+#[test]
+fn snapshot_without_rules_yaml_is_rejected() {
+    let loader = PackLoader::new("0.1.0");
+    let mut snapshot = fixture_snapshot();
+    snapshot.rules.clear();
+    let error = loader.load_runtime_snapshot(snapshot).unwrap_err();
+    assert!(error.to_string().contains("rules.yaml"), "{error}");
+}
+
+#[test]
+fn declared_observe_missing_from_snapshot_rejects_the_pack() {
+    let loader = PackLoader::new("0.1.0");
+    let mut snapshot = fixture_snapshot();
+    assert!(snapshot.manifest.rules.as_ref().unwrap().observe.is_some());
+    snapshot.observe = None;
+    let error = loader.load_runtime_snapshot(snapshot).unwrap_err();
+    assert!(matches!(error, GameError::ManifestParseError(_)), "{error}");
+    assert!(error.to_string().contains("observe.yaml"), "{error}");
+}
+
+#[test]
+fn simulated_pack_with_rules_but_no_observe_is_rejected() {
+    let loader = PackLoader::new("0.1.0");
+    let mut snapshot = fixture_snapshot();
+    snapshot.manifest.rules.as_mut().unwrap().observe = None;
+    snapshot.observe = None;
+    let error = loader.load_runtime_snapshot(snapshot).unwrap_err();
+    assert!(matches!(error, GameError::ManifestParseError(_)), "{error}");
+    assert!(error.to_string().contains("rules.observe"), "{error}");
 }

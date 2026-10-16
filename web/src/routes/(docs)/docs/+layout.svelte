@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
+	import { dynamicRoute } from '$lib/paths';
 	import { IconMenu2 } from '@tabler/icons-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Sheet from '$lib/components/ui/sheet';
@@ -49,7 +50,7 @@
 									item.href
 										? 'bg-primary/15 font-medium text-primary'
 										: 'text-muted-foreground hover:bg-muted hover:text-foreground'}"
-									href={resolve(item.href)}
+									href={resolve(dynamicRoute(item.href))}
 									onclick={() => (mobileNavigationOpen = false)}>{item.title}</a
 								>
 							{/each}
@@ -96,7 +97,7 @@
 							item.href
 								? 'bg-primary/15 font-medium text-primary'
 								: 'text-muted-foreground hover:bg-muted hover:text-foreground'}"
-							href={resolve(item.href)}>{item.title}</a
+							href={resolve(dynamicRoute(item.href))}>{item.title}</a
 						>
 					{/each}
 				{/each}

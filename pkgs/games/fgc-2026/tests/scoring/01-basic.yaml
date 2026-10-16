@@ -1,0 +1,22 @@
+name: "Cơ bản: hệ số leo từng liên minh"
+observation:
+  game: fgc-2026
+  field: { ext_wildfire: 0 }
+  sides:
+    red:
+      su_wildfire: 100
+      robots:
+        - { climb: ZONE_3, lifted_by_partner: false }
+        - { climb: ZONE_2, lifted_by_partner: false }
+        - { climb: CONTACT, lifted_by_partner: false }
+    blue:
+      su_wildfire: 80
+      robots:
+        - { climb: ZONE_1, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+expect:
+  field: { knockdown: 0, coop: 0 }
+  sides:
+    red: { score: 155, values: { climb_mult: 1.55, su_points: 155 } }
+    blue: { score: 88, values: { climb_mult: 1.10, su_points: 88 } }

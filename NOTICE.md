@@ -17,6 +17,20 @@ là thương hiệu của chủ sở hữu tương ứng. FAnRoC là cuộc thi 
 RISO không liên kết, không được bảo trợ hay xác nhận bởi các tổ chức này.
 Tên giải và tên đề chỉ được dùng để mô tả nội dung mô phỏng.
 
+## Logo
+
+Giấy phép MIT áp dụng cho mã nguồn, **không** áp dụng cho logo và tên
+thương hiệu. Các logo trong `web/static/images/` thuộc chủ sở hữu tương ứng
+và chỉ được dùng để ghi nhận cộng đồng/nguồn gốc dự án:
+
+- `makerviet.png` — MakerViet
+- `de-foundation.svg` — Dế STEM Foundation
+- `team-vietnam.svg` — Team Vietnam FIRST Global Challenge
+- `first-global.webp`, `first-global-2026.png` — FIRST Global
+
+Bản phái sinh (fork) muốn dùng lại các logo này cần xin phép chủ sở hữu,
+hoặc gỡ chúng khỏi trang chủ.
+
 ## Tài sản đồ hoạ
 
 Mô hình sân, robot và hình ảnh trong `pkgs/games/` và `web/static/` có thể

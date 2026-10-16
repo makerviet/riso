@@ -1,0 +1,22 @@
+name: "Knockdown không tính khi Extinguisher bằng một Suppression Unit"
+observation:
+  game: fgc-2026
+  field: { ext_wildfire: 120 }
+  sides:
+    red:
+      su_wildfire: 120
+      robots:
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+    blue:
+      su_wildfire: 50
+      robots:
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+        - { climb: NONE, lifted_by_partner: false }
+expect:
+  field: { knockdown: 0 }
+  sides:
+    red: { score: 240 }
+    blue: { score: 170 }

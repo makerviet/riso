@@ -9,6 +9,7 @@ import userRoutes from './routes/user'
 import robotRoutes from './routes/robot'
 import matchesRoutes from './routes/matches'
 import gamePacksRoutes from './routes/game-packs'
+import rulesRoutes from './routes/rules'
 import adminRoutes from './routes/admin'
 import gameServerRoutes from './routes/game-servers'
 
@@ -39,6 +40,7 @@ app.route('/api/user', userRoutes)
 app.route('/api/robot', robotRoutes)
 app.route('/api/matches', matchesRoutes)
 app.route('/api/game-packs', gamePacksRoutes)
+app.route('/api/rules', rulesRoutes)
 app.route('/api/admin', adminRoutes)
 app.route('/api/game-servers', gameServerRoutes)
 

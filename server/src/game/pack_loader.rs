@@ -3,6 +3,7 @@ use super::rhai_engine::{RhaiEngine, RuleScriptMetadata};
 use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use tracing::{info, warn};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -26,6 +27,16 @@ pub struct GamePackManifest {
     pub default_robot: Option<String>,
     #[serde(default)]
     pub robots: BTreeMap<String, PackRobotManifest>,
+    /// Luật tính điểm khai báo (`rules.yaml`) và cách đo từ mô phỏng (`observe.yaml`).
+    #[serde(default)]
+    pub rules: Option<PackRulesManifest>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PackRulesManifest {
+    pub scoring: String,
+    #[serde(default)]
+    pub observe: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -70,11 +81,8 @@ pub struct ScoringTargetConfig {
     pub semantic_id: String,
     pub kind: String,
     pub alliance: Option<String>,
-    pub points: i32,
     #[serde(default = "default_true")]
     pub enabled: bool,
-    #[serde(default)]
-    pub requires_robot_outtake: bool,
     pub area: Option<ScoringAreaConfig>,
 }
 
@@ -100,6 +108,11 @@ pub struct GamePackMetadata {
     /// It stays process-local and is never sent to connected clients.
     #[serde(skip)]
     pub script_sources: BTreeMap<String, String>,
+    /// Luật đã biên dịch; chỉ sống trong tiến trình, không gửi cho client.
+    #[serde(skip)]
+    pub rules: Option<Arc<riso_rules::Rules>>,
+    #[serde(skip)]
+    pub observe: Option<Arc<crate::game::scoring_bridge::ObserveSpec>>,
 }
 
 /// The API-owned source of truth a match host fetches before it accepts users.
@@ -114,6 +127,11 @@ pub struct GamePackRuntimeSnapshot {
     pub scripts: BTreeMap<String, String>,
     #[serde(default)]
     pub robots: BTreeMap<String, RobotRuntimeAssets>,
+    /// id đề → YAML, gồm đề chính và mọi đề cha theo `extends`.
+    #[serde(default)]
+    pub rules: BTreeMap<String, String>,
+    #[serde(default)]
+    pub observe: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -190,9 +208,7 @@ pub struct FieldScoringTarget {
     pub id: String,
     pub kind: String,
     pub alliance: Option<String>,
-    pub points: i32,
     pub enabled: bool,
-    pub requires_robot_outtake: bool,
     pub min: [f32; 3],
     pub max: [f32; 3],
 }
@@ -460,6 +476,7 @@ impl PackLoader {
                 load_robot_definition(id, &assets.physics, &assets.semantics, climber)
             })
             .transpose()?;
+        let (rules, observe) = load_rules(&snapshot)?;
         Ok(GamePackMetadata {
             manifest: snapshot.manifest,
             scripts,
@@ -467,6 +484,8 @@ impl PackLoader {
             field_definition,
             default_robot,
             script_sources: snapshot.scripts,
+            rules,
+            observe,
         })
     }
 
@@ -533,14 +552,89 @@ impl PackLoader {
                 Ok((id.clone(), RobotRuntimeAssets { physics, semantics }))
             })
             .collect::<Result<BTreeMap<_, _>, GameError>>()?;
+        let mut rules_sources = BTreeMap::new();
+        let mut observe = None;
+        if let Some(paths) = &manifest.rules {
+            let read = |path: &std::path::Path| {
+                std::fs::read_to_string(path)
+                    .map_err(|error| GameError::ManifestParseError(error.to_string()))
+            };
+            // Đề chính rồi lần lượt các đề cha (`extends: <id>` → ../<id>/rules.yaml).
+            let mut game = manifest.id.clone();
+            let mut path = root.join(&paths.scoring);
+            while !rules_sources.contains_key(&game) {
+                let yaml = read(&path)?;
+                let parent = serde_yaml_ng::from_str::<serde_yaml_ng::Value>(&yaml)
+                    .ok()
+                    .and_then(|value| value.get("extends")?.as_str().map(str::to_string));
+                rules_sources.insert(game, yaml);
+                let Some(parent) = parent else { break };
+                path = root.join("..").join(&parent).join("rules.yaml");
+                game = parent;
+            }
+            if let Some(path) = &paths.observe {
+                observe = Some(read(&root.join(path))?);
+            }
+        }
         self.load_runtime_snapshot(GamePackRuntimeSnapshot {
             manifest,
             field_physics,
             field_semantics,
             scripts,
             robots,
+            rules: rules_sources,
+            observe,
         })
     }
+}
+
+type LoadedRules = (
+    Option<Arc<riso_rules::Rules>>,
+    Option<Arc<crate::game::scoring_bridge::ObserveSpec>>,
+);
+
+/// Biên dịch `rules.yaml` (kèm đề cha) và `observe.yaml` của snapshot. Luật
+/// hoặc phép đo sai làm hỏng cả gói: host không nhận trận nào khi luật lỗi.
+fn load_rules(snapshot: &GamePackRuntimeSnapshot) -> Result<LoadedRules, GameError> {
+    let Some(paths) = &snapshot.manifest.rules else {
+        return Ok((None, None));
+    };
+    let yaml = snapshot.rules.get(&snapshot.manifest.id).ok_or_else(|| {
+        GameError::ManifestParseError(format!(
+            "Runtime snapshot thiếu {} của đề {}",
+            paths.scoring, snapshot.manifest.id
+        ))
+    })?;
+    let rules = riso_rules::load(yaml, &riso_rules::MapResolver(snapshot.rules.clone())).map_err(
+        |errors| {
+            GameError::ScriptCompilationError(
+                errors
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+            )
+        },
+    )?;
+    // Gói tới được đây là gói mô phỏng (đã có sân): luật mà không có phép đo
+    // thì `rescore` không bao giờ chạy và trận âm thầm 0–0, nên từ chối gói.
+    let Some(observe_text) = snapshot.observe.as_deref() else {
+        return Err(GameError::ManifestParseError(match &paths.observe {
+            Some(path) => format!(
+                "Runtime snapshot thiếu {path} (observe.yaml) của đề {} dù manifest khai báo rules.observe",
+                snapshot.manifest.id
+            ),
+            None => format!(
+                "Đề {} có rules.yaml nhưng manifest không khai báo rules.observe (observe.yaml): gói mô phỏng cần phép đo để tính điểm",
+                snapshot.manifest.id
+            ),
+        }));
+    };
+    let observe = crate::game::scoring_bridge::parse_observe(observe_text, &rules)
+        .map(Arc::new)
+        .map_err(GameError::ScriptCompilationError)?;
+    info!(game = %rules.file.game, version = %rules.file.version, "Loaded scoring rules");
+    Ok((Some(Arc::new(rules)), Some(observe)))
 }
 
 mod field;

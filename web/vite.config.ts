@@ -16,7 +16,8 @@ export default defineConfig({
 			},
 			adapter: adapter(),
 			preprocess: [mdsvex({ extensions: ['.svx', '.md'] })],
-			extensions: ['.svelte', '.svx', '.md']
+			extensions: ['.svelte', '.svx', '.md'],
+			alias: { $riso: '../crates/riso-rules/pkg' }
 		}),
 
 		paraglideVitePlugin({
@@ -26,6 +27,7 @@ export default defineConfig({
 		})
 	],
 	server: {
+		fs: { allow: ['..'] },
 		proxy: {
 			'/api': { target: 'http://localhost:8787', changeOrigin: true }
 		}

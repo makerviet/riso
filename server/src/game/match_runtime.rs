@@ -39,14 +39,52 @@ pub struct MatchContext {
     pub clock: f64,
 }
 
+/// Bảng điểm sống của trận. Mọi con số đều lấy từ `riso_rules::score` trên
+/// biên bản dựng từ mô phỏng; runtime vật lý không tự cộng điểm.
 #[derive(Debug, Clone, Default)]
 pub struct ScoreState {
     pub blue_score: i32,
     pub red_score: i32,
     pub global_score: i32,
-    pub blue_su_score: i32,
-    pub red_su_score: i32,
+    /// `<side>.<tên giá trị>` → giá trị có nhãn, làm tròn lên số nguyên.
     pub breakdown: HashMap<String, i32>,
+    pub sheet: Option<std::sync::Arc<riso_rules::ScoreSheet>>,
+    /// Lần tính gần nhất thất bại; bảng điểm giữ kết quả hợp lệ trước đó.
+    pub scoring_error: Option<String>,
+}
+
+impl ScoreState {
+    pub fn from_sheet(sheet: std::sync::Arc<riso_rules::ScoreSheet>) -> Self {
+        use rust_decimal::prelude::ToPrimitive;
+        let side = |id: &str| {
+            sheet
+                .sides
+                .get(id)
+                .map(|s| s.score.clamp(i32::MIN.into(), i32::MAX.into()) as i32)
+                .unwrap_or(0)
+        };
+        let mut breakdown = HashMap::new();
+        for (id, s) in &sheet.sides {
+            for item in s.values.iter().filter(|v| v.label.is_some()) {
+                if let Some(value) = item
+                    .value
+                    .parse::<rust_decimal::Decimal>()
+                    .ok()
+                    .and_then(|d| d.ceil().to_i32())
+                {
+                    breakdown.insert(format!("{id}.{}", item.name), value);
+                }
+            }
+        }
+        Self {
+            blue_score: side("blue"),
+            red_score: side("red"),
+            global_score: 0,
+            breakdown,
+            sheet: Some(sheet),
+            scoring_error: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]

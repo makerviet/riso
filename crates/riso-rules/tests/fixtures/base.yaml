@@ -1,0 +1,27 @@
+schema: riso.rules/v1
+game: base-game
+name: Base
+version: 1.0.0
+source: "fixture"
+sides: { ids: [red, blue], teams: 2 }
+rounding: ceil
+inputs:
+  side:
+    balls: { type: count, max: 50, label: "Bóng" }
+  robot:
+    parked: { type: bool, label: "Đỗ" }
+constants:
+  ball_points: 2
+values:
+  side:
+    ball_points_total: { expr: "balls * ball_points", label: "Điểm bóng" }
+    park_bonus: { expr: "5 * count(robots.parked)", label: "Đỗ xe" }
+score: "ball_points_total + park_bonus + fouls_received"
+fouls:
+  minor: { label: "Lỗi", points: "3", goes_to: opponent }
+cards: { red: team_zero, yellow: none }
+ranking:
+  aggregate: sum
+  keep_best: 2
+  tiebreakers:
+    - { label: "Trận cao nhất", expr: "max(matches.team_score)" }
