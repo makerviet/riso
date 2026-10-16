@@ -10,7 +10,7 @@
 </script>
 
 <div
-	class="relative flex h-screen w-full flex-col items-center justify-center overflow-hidden bg-background text-center"
+	class="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-background pt-20 pb-10 text-center"
 >
 	<div
 		class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,var(--color-primary)_0,transparent_70%)] opacity-[0.03]"
@@ -55,15 +55,14 @@
 	</nav>
 
 	<div class="z-10 flex max-w-3xl flex-col items-center gap-6 px-4">
-		<h1 class="font-daybreaker text-6xl font-black tracking-wide text-primary">
-			FGSimulator by Team Vietnam
-		</h1>
-		<p class="text-xl leading-relaxed font-medium text-muted-foreground">
+		<h1 class="font-daybreaker text-5xl font-black tracking-wide text-primary sm:text-6xl">RISO</h1>
+		<p class="-mt-4 text-xl font-bold tracking-wide text-primary sm:text-2xl">Robot Is Sport</p>
+		<p class="text-base leading-relaxed font-medium text-muted-foreground sm:text-xl">
 			Join Team Vietnam and the global robotics community to design, build, and simulate your 2026
 			Igniting Innovation robot in a fully synchronized, physics-driven multiplayer environment.
 		</p>
 
-		<div class="mt-8 flex gap-4">
+		<div class="mt-8 flex flex-wrap justify-center gap-4">
 			<Button href="/dashboard" size="lg" class="px-8 text-lg font-bold">Enter Simulator</Button>
 			<Button
 				variant="outline"
@@ -75,7 +74,7 @@
 
 		<div class="mt-16 flex w-full max-w-lg flex-col items-center gap-6">
 			<div
-				class="flex cursor-default items-center justify-center gap-8 opacity-50 grayscale transition-all hover:opacity-100 hover:grayscale-0"
+				class="flex cursor-default flex-wrap items-center justify-center gap-6 opacity-50 grayscale transition-all hover:opacity-100 hover:grayscale-0 sm:gap-8"
 			>
 				<img src="/images/first-global.webp" alt="FIRST Global Logo" class="h-12 object-contain" />
 				<img
@@ -88,6 +87,23 @@
 					alt="Team Vietnam Logo"
 					class="h-14 rounded-md object-contain"
 				/>
+			</div>
+			<div class="flex flex-col items-center gap-2">
+				<p class="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+					Community
+				</p>
+				<div
+					class="flex flex-wrap items-center justify-center gap-6 rounded-xl bg-white px-6 py-3 shadow-sm"
+				>
+					<a href="https://github.com/makerviet" aria-label="MakerViet">
+						<img src="/images/makerviet.png" alt="MakerViet Logo" class="h-16 object-contain" />
+					</a>
+					<img
+						src="/images/de-foundation.svg"
+						alt="Dế Foundation Logo"
+						class="h-12 object-contain"
+					/>
+				</div>
 			</div>
 			<div
 				class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm font-medium text-muted-foreground"
@@ -105,7 +121,8 @@
 				>
 			</div>
 			<p class="text-xs font-medium text-muted-foreground">
-				FIRST Global Simulator is a Team Vietnam community project and is <strong>NOT</strong>
+				RISO is an open-source community project started by Team Vietnam FGC 2026 with MakerViet and
+				is <strong>NOT</strong>
 				affiliated with, sponsored by, or endorsed by <em>FIRST</em>® or <em>FIRST</em>® Global.
 			</p>
 		</div>
