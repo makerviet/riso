@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
+import { extraOrigins } from './auth'
 import { jsonError } from './responses'
 import type { Bindings } from './types'
 
@@ -25,7 +26,7 @@ app.use('*', cors({
     const webOrigin = (c.env.WEB_ORIGIN || 'http://localhost:5173').replace(/\/$/, '')
     const apiOrigin = (c.env.API_ORIGIN || new URL(c.req.url).origin).replace(/\/$/, '')
     const norm = origin.replace(/\/$/, '')
-    if (norm === webOrigin || norm === apiOrigin) return origin
+    if (norm === webOrigin || norm === apiOrigin || extraOrigins(c.env).includes(norm)) return origin
     if (norm.startsWith('http://localhost:') || norm.startsWith('http://127.0.0.1:')) return origin
     return null
   },

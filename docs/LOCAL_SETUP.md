@@ -69,6 +69,16 @@ Máy chủ game giờ **bắt buộc** có `rules.yaml` và `observe.yaml` của
 
 Mở http://localhost:5173 → **Open arena**.
 
+## 5. Mở cho máy khác trong LAN (tuỳ chọn)
+
+Ví dụ máy chạy RASO có IP `192.168.1.201`:
+
+1. Thêm vào `api/.dev.vars`: `EXTRA_ORIGINS=http://192.168.1.201:5173` (nhiều origin cách nhau dấu phẩy), rồi chạy lại API.
+2. Chạy web bằng `pnpm dev --host 0.0.0.0`. Trình duyệt gọi `/api` cùng origin, vite proxy chuyển sang API ở `localhost:8787`, nên API không cần mở ra LAN.
+3. Origin của máy chủ game đã đăng ký phải là địa chỉ LAN (`http://192.168.1.201:3000`), vì trình duyệt kết nối thẳng WebSocket tới đó. Tạo khoá mới với origin này, hoặc sửa origin của máy chủ đã có trong trang Admin → Game servers.
+
+Mở http://192.168.1.201:5173 từ máy bất kỳ trong mạng.
+
 ## Kiểm thử & đo hiệu năng
 
 ```sh
