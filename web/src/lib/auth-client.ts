@@ -1,9 +1,9 @@
 import { browser } from '$app/environment';
 import { createAuthClient } from 'better-auth/svelte';
+// Trình duyệt luôn gọi /api cùng origin với trang: khi dev, vite proxy chuyển sang
+// wrangler ở localhost:8787, nên mở được cả từ máy khác trong LAN.
 const authBaseUrl = browser
-	? import.meta.env.DEV
-		? 'http://localhost:8787/api/auth'
-		: new URL('/api/auth', window.location.origin).toString()
+	? new URL('/api/auth', window.location.origin).toString()
 	: 'http://localhost:8787/api/auth';
 
 type RegistrationInput = {

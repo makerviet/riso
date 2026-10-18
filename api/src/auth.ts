@@ -9,6 +9,15 @@ export type AuthEnvironment = {
   API_ORIGIN?: string
   /** Public web-app origin allowed to use the API. */
   WEB_ORIGIN?: string
+  /** Extra web origins, comma-separated, e.g. a LAN dev host http://192.168.1.201:5173. */
+  EXTRA_ORIGINS?: string
+}
+
+export function extraOrigins(env: Pick<AuthEnvironment, 'EXTRA_ORIGINS'>): string[] {
+  return (env.EXTRA_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/$/, ''))
+    .filter(Boolean)
 }
 
 export function createAuth(env: AuthEnvironment, requestUrl?: string) {
@@ -29,7 +38,8 @@ export function createAuth(env: AuthEnvironment, requestUrl?: string) {
     'http://127.0.0.1:5173',
     'http://localhost:4173',
     'http://127.0.0.1:4173',
-    'http://localhost:8787'
+    'http://localhost:8787',
+    ...extraOrigins(env)
   ]))
 
   return betterAuth({
